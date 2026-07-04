@@ -14,6 +14,12 @@ export async function getUserHistory(userId) {
   return res.json()
 }
 
+export async function getActiveRooms() {
+  const res = await fetch('/api/rooms/active')
+  if (!res.ok) throw new Error('获取房间列表失败')
+  return res.json()
+}
+
 export async function getRoomHistory(roomCode) {
   const res = await fetch(`/api/rooms/${roomCode}/history`)
   if (!res.ok) throw new Error('获取房间记录失败')

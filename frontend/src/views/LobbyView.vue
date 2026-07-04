@@ -28,8 +28,20 @@
       </form>
     </div>
 
+    <div class="card" v-if="activeRooms.length">
+      <h3>可加入的房间</h3>
+      <div v-for="r in activeRooms" :key="'a-'+r.roomCode" class="room-item flex items-center gap-8 mt-12">
+        <span class="flex-1">
+          {{ r.roomCode }}
+          <span class="badge badge-waiting">等待中</span>
+        </span>
+        <span class="text-muted">{{ r.playerCount }}人</span>
+        <button class="btn-primary" @click="joinRoomByCode(r.roomCode)">加入</button>
+      </div>
+    </div>
+
     <div class="card" v-if="rooms.length">
-      <h3>历史房间</h3>
+      <h3>我的房间</h3>
       <div v-for="r in rooms" :key="r.roomCode" class="room-item flex items-center gap-8 mt-12">
         <span class="flex-1">
           {{ r.roomCode }}
@@ -49,7 +61,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { wsService } from '../services/websocket'
-import { getUserHistory } from '../services/api'
+import { getUserHistory, getActiveRooms } from '../services/api'
 
 const router = useRouter()
 const username = ref(localStorage.getItem('username') || '')
@@ -57,6 +69,7 @@ const roomCode = ref('')
 const creating = ref(false)
 const error = ref('')
 const rooms = ref([])
+const activeRooms = ref([])
 const loading = ref(false)
 let unsubs = []
 
@@ -81,14 +94,23 @@ async function loadHistory() {
   loading.value = true
   try {
     const uid = localStorage.getItem('userId')
-    if (uid) {
-      rooms.value = await getUserHistory(uid)
-    }
+    const [userRooms, allActive] = await Promise.all([
+      uid ? getUserHistory(uid) : Promise.resolve([]),
+      getActiveRooms()
+    ])
+    rooms.value = userRooms
+    const userCodes = new Set(userRooms.map(r => r.roomCode))
+    activeRooms.value = allActive.filter(r => !userCodes.has(r.roomCode))
   } catch (e) {
     error.value = '加载房间列表失败'
   } finally {
     loading.value = false
   }
+}
+
+function joinRoomByCode(code) {
+  error.value = ''
+  wsService.send('JOIN_ROOM', { roomCode: code })
 }
 
 function createRoom() {

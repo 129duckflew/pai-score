@@ -102,6 +102,10 @@ public class RoomService {
         return playerRepository.findByRoomId(roomId);
     }
 
+    public List<Room> getActiveRooms() {
+        return roomRepository.findByStatus("WAITING");
+    }
+
     public List<Room> getUserRooms(Long userId) {
         List<RoomPlayer> players = playerRepository.findByUserId(userId);
         return players.stream()
