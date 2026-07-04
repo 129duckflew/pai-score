@@ -80,11 +80,17 @@ public class UserController {
         List<RoomHistoryResponse.EntryInfo> entryInfos = allEntries.stream().map(e -> {
             RoomHistoryResponse.EntryInfo ei = new RoomHistoryResponse.EntryInfo();
             ei.setId(e.getId());
+            ei.setSourcePlayerId(e.getSourcePlayerId());
             ei.setTargetPlayerId(e.getTargetPlayerId());
             ei.setScore(e.getScore());
             ei.setType(e.getType());
             ei.setNote(e.getNote());
             ei.setCreatedAt(e.getCreatedAt() != null ? e.getCreatedAt().toString() : null);
+            RoomPlayer source = players.stream()
+                .filter(p -> p.getId().equals(e.getSourcePlayerId())).findFirst().orElse(null);
+            ei.setSourcePlayerName(source != null ?
+                playerInfos.stream().filter(pi -> pi.getPlayerId().equals(source.getId()))
+                    .findFirst().map(RoomHistoryResponse.PlayerInfo::getUsername).orElse("?") : "?");
             RoomPlayer target = players.stream()
                 .filter(p -> p.getId().equals(e.getTargetPlayerId())).findFirst().orElse(null);
             ei.setTargetPlayerName(target != null ?

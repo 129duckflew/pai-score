@@ -28,6 +28,7 @@ public class RoomService {
 
     @Transactional
     public Room createRoom(Long hostUserId) {
+        checkNoActiveRoom(hostUserId);
         Room room = new Room();
         room.setRoomCode(generateRoomCode());
         room.setHostId(hostUserId);
@@ -54,6 +55,8 @@ public class RoomService {
             throw new RuntimeException("游戏已开始，无法加入");
         }
 
+        checkNoActiveRoom(userId);
+
         if (playerRepository.countByRoomId(room.getId()) >= 8) {
             throw new RuntimeException("房间已满（最多8人）");
         }
@@ -78,15 +81,17 @@ public class RoomService {
         RoomPlayer player = playerRepository.findByRoomIdAndUserId(room.getId(), userId)
                 .orElseThrow(() -> new RuntimeException("你不在房间中"));
 
-        playerRepository.delete(player);
-
-        long count = playerRepository.countByRoomId(room.getId());
-        if (count == 0) {
+        if (room.getHostId().equals(userId)) {
+            List<RoomPlayer> allPlayers = playerRepository.findByRoomId(room.getId());
+            playerRepository.deleteAll(allPlayers);
             roomRepository.delete(room);
-        } else if (room.getHostId().equals(userId)) {
-            List<RoomPlayer> remaining = playerRepository.findByRoomId(room.getId());
-            room.setHostId(remaining.get(0).getUserId());
-            roomRepository.save(room);
+        } else {
+            playerRepository.delete(player);
+
+            long count = playerRepository.countByRoomId(room.getId());
+            if (count == 0) {
+                roomRepository.delete(room);
+            }
         }
     }
 
@@ -112,6 +117,18 @@ public class RoomService {
                 .map(p -> roomRepository.findById(p.getRoomId()).orElse(null))
                 .filter(r -> r != null)
                 .collect(Collectors.toList());
+    }
+
+    private void checkNoActiveRoom(Long userId) {
+        List<RoomPlayer> players = playerRepository.findByUserId(userId);
+        boolean hasActiveRoom = players.stream().anyMatch(rp ->
+            roomRepository.findById(rp.getRoomId())
+                .map(r -> !"FINISHED".equals(r.getStatus()))
+                .orElse(false)
+        );
+        if (hasActiveRoom) {
+            throw new RuntimeException("你已在其他房间中，无法创建或加入新房间");
+        }
     }
 
     private String generateRoomCode() {

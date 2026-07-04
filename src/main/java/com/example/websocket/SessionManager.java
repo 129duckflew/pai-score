@@ -51,6 +51,10 @@ public class SessionManager {
         roomPlayers.values().forEach(p -> p.remove(userId));
     }
 
+    public void removeRoom(String roomCode) {
+        roomPlayers.remove(roomCode);
+    }
+
     public void broadcast(String roomCode, Object message) {
         Set<Long> userIds = roomPlayers.get(roomCode);
         if (userIds == null) return;

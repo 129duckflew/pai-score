@@ -38,6 +38,8 @@ public class RoomHistoryResponse {
 
     public static class EntryInfo {
         private Long id;
+        private Long sourcePlayerId;
+        private String sourcePlayerName;
         private Long targetPlayerId;
         private String targetPlayerName;
         private int score;
@@ -48,6 +50,10 @@ public class RoomHistoryResponse {
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
+        public Long getSourcePlayerId() { return sourcePlayerId; }
+        public void setSourcePlayerId(Long sourcePlayerId) { this.sourcePlayerId = sourcePlayerId; }
+        public String getSourcePlayerName() { return sourcePlayerName; }
+        public void setSourcePlayerName(String sourcePlayerName) { this.sourcePlayerName = sourcePlayerName; }
         public Long getTargetPlayerId() { return targetPlayerId; }
         public void setTargetPlayerId(Long targetPlayerId) { this.targetPlayerId = targetPlayerId; }
         public String getTargetPlayerName() { return targetPlayerName; }

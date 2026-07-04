@@ -74,6 +74,7 @@ public class GameService {
 
         ScoreEntry entry = new ScoreEntry();
         entry.setRoomId(room.getId());
+        entry.setSourcePlayerId(self.getId());
         entry.setTargetPlayerId(targetPlayerId);
         entry.setAddedByUserId(userId);
         entry.setScore(score);
@@ -81,7 +82,9 @@ public class GameService {
         entry.setCreatedAt(LocalDateTime.now());
         entry = entryRepository.save(entry);
 
+        self.setTotalScore(self.getTotalScore() - score);
         target.setTotalScore(target.getTotalScore() + score);
+        playerRepository.save(self);
         playerRepository.save(target);
 
         return entry;
@@ -121,6 +124,7 @@ public class GameService {
 
         ScoreEntry entry = new ScoreEntry();
         entry.setRoomId(room.getId());
+        entry.setSourcePlayerId(player.getId());
         entry.setTargetPlayerId(player.getId());
         entry.setAddedByUserId(userId);
         entry.setScore(total);

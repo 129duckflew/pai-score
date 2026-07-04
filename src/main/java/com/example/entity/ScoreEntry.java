@@ -13,6 +13,8 @@ public class ScoreEntry {
     @Column(nullable = false)
     private Long roomId;
 
+    private Long sourcePlayerId;
+
     @Column(nullable = false)
     private Long targetPlayerId;
 
@@ -40,6 +42,8 @@ public class ScoreEntry {
     public void setId(Long id) { this.id = id; }
     public Long getRoomId() { return roomId; }
     public void setRoomId(Long roomId) { this.roomId = roomId; }
+    public Long getSourcePlayerId() { return sourcePlayerId; }
+    public void setSourcePlayerId(Long sourcePlayerId) { this.sourcePlayerId = sourcePlayerId; }
     public Long getTargetPlayerId() { return targetPlayerId; }
     public void setTargetPlayerId(Long targetPlayerId) { this.targetPlayerId = targetPlayerId; }
     public Long getAddedByUserId() { return addedByUserId; }

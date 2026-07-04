@@ -73,7 +73,7 @@
         <thead>
           <tr>
             <th>时间</th>
-            <th>玩家</th>
+            <th>操作</th>
             <th>分数</th>
             <th>备注</th>
           </tr>
@@ -83,7 +83,7 @@
             <td class="text-muted">{{ formatTime(e.createdAt) }}</td>
             <td>
               <template v-if="e.type === 'DICE_ROLL'">{{ playerName(e.targetPlayerId) }} 🎲</template>
-              <template v-else>{{ playerName(e.targetPlayerId) }}</template>
+              <template v-else>{{ playerName(e.sourcePlayerId) }} → {{ playerName(e.targetPlayerId) }}</template>
             </td>
             <td>
               <template v-if="e.type === 'DICE_ROLL'">🎲 {{ e.score }}</template>
@@ -227,6 +227,7 @@ onMounted(() => {
   unsubs.push(wsService.on('SCORE_ADDED', handleScoreAdded))
   unsubs.push(wsService.on('GAME_OVER', handleGameOver))
   unsubs.push(wsService.on('DICE_ROLL_RESULT', handleDiceRollResult))
+  unsubs.push(wsService.on('ROOM_DESTROYED', handleRoomDestroyed))
   unsubs.push(wsService.on('ERROR', (msg) => { error.value = msg.message }))
 
   wsService.send('GET_ROOM_STATE', { roomCode })
@@ -259,6 +260,10 @@ function handleGameOver(msg) {
   roomState.value = { ...roomState.value, status: 'FINISHED' }
   players.value = msg.players || []
   entries.value = msg.entries || []
+}
+
+function handleRoomDestroyed(msg) {
+  router.push('/lobby')
 }
 
 function handleDiceRollResult(msg) {

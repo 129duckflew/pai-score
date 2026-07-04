@@ -168,7 +168,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
 
             Room room = roomService.findByCode(roomCode);
-            if (room != null) {
+            if (room == null) {
+                sessionManager.broadcast(roomCode, Map.of(
+                    "type", "ROOM_DESTROYED",
+                    "roomCode", roomCode
+                ));
+                sessionManager.removeRoom(roomCode);
+            } else {
                 sessionManager.broadcast(roomCode, Map.of(
                     "type", "PLAYER_LIST",
                     "players", buildPlayerList(room.getId(), null)
@@ -205,6 +211,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             Map<String, Object> entryData = new HashMap<>();
             entryData.put("id", entry.getId());
+            entryData.put("sourcePlayerId", entry.getSourcePlayerId());
             entryData.put("targetPlayerId", entry.getTargetPlayerId());
             entryData.put("score", entry.getScore());
             entryData.put("note", entry.getNote());
@@ -239,6 +246,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             List<Map<String, Object>> entriesData = allEntries.stream().map(e -> {
                 Map<String, Object> m = new HashMap<>();
                 m.put("id", e.getId());
+                m.put("sourcePlayerId", e.getSourcePlayerId());
                 m.put("targetPlayerId", e.getTargetPlayerId());
                 m.put("score", e.getScore());
                 m.put("note", e.getNote());
@@ -289,6 +297,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             Map<String, Object> entryData = new HashMap<>();
             entryData.put("id", entry.getId());
+            entryData.put("sourcePlayerId", entry.getSourcePlayerId());
             entryData.put("targetPlayerId", entry.getTargetPlayerId());
             entryData.put("score", entry.getScore());
             entryData.put("note", entry.getNote());
@@ -317,6 +326,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         List<Map<String, Object>> entriesData = entries.stream().map(e -> {
             Map<String, Object> m = new HashMap<>();
             m.put("id", e.getId());
+            m.put("sourcePlayerId", e.getSourcePlayerId());
             m.put("targetPlayerId", e.getTargetPlayerId());
             m.put("score", e.getScore());
             m.put("note", e.getNote());
