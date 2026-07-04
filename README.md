@@ -1,5 +1,7 @@
 # 打牌记账 (Card Game Score Keeper)
 
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new?template=https%3A%2F%2Fgithub.com%2F129duckflew%2Fpai-score)
+
 一个基于 Socket.IO 实时通信的打牌记账工具，支持多人在线记分、房间管理、自由记分、断线重连。
 
 ## 技术栈
