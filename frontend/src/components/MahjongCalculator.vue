@@ -54,10 +54,12 @@
           <span v-if="!tiles.length" class="mjc-placeholder">点击上方牌面选择手牌</span>
           <span
             v-for="(t, i) in tiles" :key="i"
-            class="mjc-hand-tile"
+            class="mjc-hand-tile-wrap"
             @click="removeTile(i)"
-            v-html="tileSvg(t, 44)"
-          ></span>
+          >
+            <span class="mjc-hand-tile" v-html="tileSvg(t, 44)"></span>
+            <span v-if="discardCandidates[t]" class="mjc-discard-badge">听</span>
+          </span>
         </div>
         <div class="mjc-hand-info">
           <span>{{ tiles.length }} 张</span>
@@ -85,6 +87,17 @@
         </div>
         <div v-else class="mjc-result-info">
           向听数：<strong>{{ result }}</strong>（还需 {{ result + 1 }} 步听牌）
+          <div v-if="discardCandidates && Object.keys(discardCandidates).length" class="mjc-discard-section">
+            <div class="mjc-discard-title">打出可听牌：</div>
+            <div v-for="(info, tile) in discardCandidates" :key="tile" class="mjc-discard-line">
+              <span class="mjc-wait-tile" v-html="tileSvg(tile, 26)"></span>
+              <span class="mjc-discard-arrow">→</span>
+              <span v-for="(cnt, wt, i) in info.ukeire" :key="wt" class="mjc-wait-item">
+                <span class="mjc-wait-tile" v-html="tileSvg(wt, 26)"></span><span class="mjc-wait-remain">剩{{ cnt }}张</span>{{ i < Object.keys(info.ukeire).length - 1 ? '、' : '' }}
+              </span>
+              <span class="mjc-wait-remain">共{{ info.totalUkeire }}张</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -126,6 +139,7 @@ function sortTiles() {
 const result = ref(null)
 const ukeire = ref(null)
 const totalUkeire = ref(0)
+const discardCandidates = ref({})
 
 function addTile(code) {
   const cur = handCount[code] || 0
@@ -135,6 +149,7 @@ function addTile(code) {
   sortTiles()
   result.value = null
   ukeire.value = null
+  discardCandidates.value = {}
 }
 
 function removeTile(i) {
@@ -153,6 +168,7 @@ function clearAll() {
   tiles.value = []
   result.value = null
   ukeire.value = null
+  discardCandidates.value = {}
 }
 
 function analyze() {
@@ -162,12 +178,37 @@ function analyze() {
   const shanten = cal.calShantenMenzu(hand)
   result.value = shanten
   ukeire.value = null
+  discardCandidates.value = {}
+
+  const len = tiles.value.length
+  const rs = new RuleSet('MCR')
+
+  if (shanten === -1) return
 
   if (shanten === 0) {
-    const rs = new RuleSet('MCR')
-    const u = rs.calUkeire(hand)
-    ukeire.value = u.ukeire
-    totalUkeire.value = u.totalUkeire
+    try {
+      const u = rs.calUkeire(hand)
+      ukeire.value = u.ukeire || null
+      totalUkeire.value = u.totalUkeire || 0
+    } catch (e) {
+      ukeire.value = null
+    }
+    return
+  }
+
+  if (len % 3 === 2) {
+    try {
+      const u = rs.calUkeire(hand)
+      const candidates = {}
+      if (u.normalDiscard) {
+        for (const [tile, info] of Object.entries(u.normalDiscard)) {
+          if (info.shanten < shanten) candidates[tile] = info
+        }
+      }
+      discardCandidates.value = candidates
+    } catch (e) {
+      discardCandidates.value = {}
+    }
   }
 }
 </script>
@@ -305,11 +346,57 @@ function analyze() {
   padding: 0;
   background: none;
 }
-.mjc-hand-tile:hover {
-  border-color: #ff4d4f;
-  transform: translateY(-2px);
-  filter: drop-shadow(0 2px 4px rgba(255, 77, 79, 0.35));
+.mjc-hand-tile-wrap {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
 }
+.mjc-discard-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: #ff7a45;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  z-index: 1;
+  animation: badgePulse 1.5s infinite;
+}
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 122, 69, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 122, 69, 0); }
+}
+
+.mjc-discard-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #adc6ff;
+}
+.mjc-discard-title {
+  font-size: 13px;
+  color: #597ef7;
+  margin-bottom: 6px;
+}
+.mjc-discard-line {
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.mjc-discard-arrow {
+  margin: 0 4px;
+  color: #1d39c4;
+  font-weight: 700;
+}
+
 .mjc-hand-info {
   font-size: 12px;
   color: #999;
