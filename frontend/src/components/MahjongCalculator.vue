@@ -13,7 +13,7 @@
             class="mjc-tile"
             :class="{ active: handCount['m'+n] }"
             @click="addTile('m'+n)">
-            {{ n }}<span class="mjc-suf">万</span>
+            <span v-html="tileSvg('m'+n, 38)"></span>
             <span v-if="handCount['m'+n]" class="mjc-badge">{{ handCount['m'+n] }}</span>
           </button>
         </div>
@@ -23,7 +23,7 @@
             class="mjc-tile"
             :class="{ active: handCount['p'+n] }"
             @click="addTile('p'+n)">
-            {{ n }}<span class="mjc-suf">筒</span>
+            <span v-html="tileSvg('p'+n, 38)"></span>
             <span v-if="handCount['p'+n]" class="mjc-badge">{{ handCount['p'+n] }}</span>
           </button>
         </div>
@@ -33,17 +33,17 @@
             class="mjc-tile"
             :class="{ active: handCount['s'+n] }"
             @click="addTile('s'+n)">
-            {{ n }}<span class="mjc-suf">条</span>
+            <span v-html="tileSvg('s'+n, 38)"></span>
             <span v-if="handCount['s'+n]" class="mjc-badge">{{ handCount['s'+n] }}</span>
           </button>
         </div>
         <div class="mjc-row">
           <span class="mjc-label">字</span>
-          <button v-for="(label, code) in honors" :key="code"
+          <button v-for="(_, code) in honors" :key="code"
             class="mjc-tile mjc-honor"
             :class="{ active: handCount[code] }"
             @click="addTile(code)">
-            {{ label }}
+            <span v-html="tileSvg(code, 38)"></span>
             <span v-if="handCount[code]" class="mjc-badge">{{ handCount[code] }}</span>
           </button>
         </div>
@@ -56,7 +56,8 @@
             v-for="(t, i) in tiles" :key="i"
             class="mjc-hand-tile"
             @click="removeTile(i)"
-          >{{ tileDisplay(t) }}</span>
+            v-html="tileSvg(t, 44)"
+          ></span>
         </div>
         <div class="mjc-hand-info">
           <span>{{ tiles.length }} 张</span>
@@ -76,8 +77,8 @@
           <strong>🎯 听牌！</strong>
           <span v-if="ukeire && Object.keys(ukeire).length">
             可胡：
-            <span v-for="(cnt, tile, i) in ukeire" :key="tile">
-              <span class="mjc-wait-tile">{{ tileDisplay(tile) }}</span><span v-if="cnt > 0" class="mjc-wait-remain">剩{{ cnt }}张</span>{{ i < Object.keys(ukeire).length - 1 ? '、' : '' }}
+              <span v-for="(cnt, tile, i) in ukeire" :key="tile" class="mjc-wait-item">
+                <span class="mjc-wait-tile" v-html="tileSvg(tile, 30)"></span><span v-if="cnt > 0" class="mjc-wait-remain">剩{{ cnt }}张</span>{{ i < Object.keys(ukeire).length - 1 ? '、' : '' }}
             </span>
           </span>
           <span class="mjc-ukeire-total">共 {{ totalUkeire }} 张牌可胡</span>
@@ -97,10 +98,10 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { tilesToHand, cal, RuleSet } from 'mahjong-tile-efficiency'
+import { tileSvg } from '../utils/mahjong-tiles.js'
 
 defineEmits(['close'])
 
-const SUIT = { m: '万', p: '筒', s: '条' }
 const honors = {
   '1z': '东', '2z': '南', '3z': '西', '4z': '北',
   '7z': '中', '6z': '发', '5z': '白'
@@ -137,14 +138,6 @@ function clearAll() {
   tiles.value = []
   result.value = null
   ukeire.value = null
-}
-
-function tileDisplay(code) {
-  if (code.length === 2) {
-    const n = code[0], s = code[1]
-    if (SUIT[s]) return n + SUIT[s]
-  }
-  return honors[code] || code
 }
 
 function analyze() {
@@ -228,44 +221,32 @@ function analyze() {
 }
 .mjc-tile {
   position: relative;
-  width: 46px;
-  height: 42px;
-  border: 1.5px solid #d9d9d9;
+  width: 48px;
+  height: 54px;
+  border: 2px solid transparent;
   border-radius: 6px;
-  background: #fafafa;
   cursor: pointer;
-  font-size: 15px;
-  font-weight: 500;
-  color: #333;
+  transition: all 0.12s;
+  padding: 0;
+  background: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.12s;
-  padding: 0;
 }
 .mjc-tile:hover {
   border-color: #4a90d9;
-  background: #e6f0ff;
   transform: translateY(-2px);
-  box-shadow: 0 2px 6px rgba(74, 144, 217, 0.25);
+  filter: drop-shadow(0 2px 4px rgba(74, 144, 217, 0.35));
 }
 .mjc-tile.active {
   border-color: #4a90d9;
-  background: #e6f0ff;
-}
-.mjc-honor {
-  color: #d4380d;
-  font-weight: 600;
-}
-.mjc-suf {
-  font-size: 10px;
-  opacity: 0.65;
-  margin-left: 1px;
+  border-radius: 8px;
+  filter: drop-shadow(0 0 6px rgba(74, 144, 217, 0.5));
 }
 .mjc-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -4px;
+  right: -4px;
   min-width: 18px;
   height: 18px;
   border-radius: 9px;
@@ -277,6 +258,7 @@ function analyze() {
   align-items: center;
   justify-content: center;
   padding: 0 4px;
+  z-index: 1;
 }
 
 .mjc-hand-area {
@@ -301,20 +283,17 @@ function analyze() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 40px;
-  border: 1.5px solid #d9d9d9;
+  border: 2px solid transparent;
   border-radius: 6px;
-  background: #fff;
-  font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.12s;
+  padding: 0;
+  background: none;
 }
 .mjc-hand-tile:hover {
   border-color: #ff4d4f;
-  background: #fff2f0;
   transform: translateY(-2px);
+  filter: drop-shadow(0 2px 4px rgba(255, 77, 79, 0.35));
 }
 .mjc-hand-info {
   font-size: 12px;
@@ -359,14 +338,16 @@ function analyze() {
   border: 1px solid #adc6ff;
   color: #1d39c4;
 }
+.mjc-wait-item {
+  white-space: nowrap;
+}
 .mjc-wait-tile {
   display: inline-block;
-  padding: 1px 6px;
-  background: #fff;
+  vertical-align: middle;
   border: 1px solid #ffd591;
   border-radius: 4px;
-  font-weight: 600;
-  margin: 0 1px;
+  line-height: 0;
+  padding: 1px;
 }
 .mjc-wait-remain {
   font-size: 12px;
