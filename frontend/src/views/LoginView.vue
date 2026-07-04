@@ -7,7 +7,7 @@
         <div class="flex gap-8">
           <input
             v-model="username"
-            placeholder="输入名称，名称更容易辨识"
+            placeholder="请输入名称"
             class="flex-1"
             :disabled="loading"
             autofocus
