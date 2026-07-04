@@ -10,19 +10,82 @@
 | 数据库 | H2 (文件存储) + Spring Data JPA |
 | 实时通信 | 原生 WebSocket (JSON 消息) |
 | 前端 | Vue 3 + Vite (Composition API) |
-| 部署 | Docker Compose + nginx |
+| 部署 | Railway (IaC) + Docker + nginx + PostgreSQL |
 
 ## 架构
 
 ```
+           Local Development
 ┌─────────────┐     ┌──────────────┐     ┌──────────┐
 │  浏览器     │────▶│  nginx       │────▶│ Backend  │
 │ Vue 3 SPA   │ WS  │  proxy /ws   │ WS  │ :8081    │
 │             │◀────│  proxy /api  │◀────│ WebSocket│
 └─────────────┘     └──────────────┘     │ + REST   │
       :8083                                + H2 DB  │
-                                          └──────────┘
+                                           └──────────┘
+
 ```
+
+```
+           Railway Deployment
+┌─────────────┐     ┌──────────────┐     ┌──────────┐     ┌────────────┐
+│  浏览器     │────▶│  nginx        │────▶│ Backend  │────▶│ PostgreSQL │
+│ Vue 3 SPA   │     │  (frontend)   │     │ :8081    │     │ (managed)  │
+│             │◀────│  serve SPA    │◀────│ WebSocket│     │            │
+└─────────────┘     │  proxy /api   │     │ + REST   │     │ Volume:5GB │
+                    │  proxy /ws    │     │ JPA      │     └────────────┘
+                    └──────────────┘     └──────────┘
+```
+
+## Railway Deployment
+
+The project is deployed on [Railway](https://railway.app) using Infrastructure-as-Code (`.railway/railway.ts`) with three resources:
+
+### 1. PostgreSQL Database
+- Managed PostgreSQL instance with a 5GB persistent volume in `us-west2`
+- Disk usage alerts at 80%, 95%, and 100%
+
+### 2. Backend (Spring Boot)
+- **Source:** GitHub (`129duckflew/springboot-hello`, branch `main`)
+- **Build:** Dockerfile at project root — multi-stage Maven build (JDK 21) producing a JRE runtime image
+- **Port:** `8081` (via `$PORT` env var, configured in `application-railway.properties`)
+- **Profile:** `SPRING_PROFILES_ACTIVE=railway` switches from H2 to PostgreSQL
+- **Database:** Connects via Railway-injected env vars (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`)
+
+### 3. Frontend (nginx + Vue 3 SPA)
+- **Source:** GitHub, root directory `frontend/`
+- **Build:** Multi-stage Dockerfile — `node:22-alpine` builds the Vite project, then serves via `nginx:stable-alpine`
+- **Runtime:** `entrypoint.sh` uses `envsubst` to inject `BACKEND_HOST` and `BACKEND_PORT` into `nginx.conf.template`
+- **Auto-sleep:** `sleepApplication: true` to save credits when idle
+- **Reverse proxy rules:**
+  - `/api/*` → `proxy_pass` to backend
+  - `/ws` → `proxy_pass` with WebSocket Upgrade headers
+  - `/*` → serve static SPA files, fallback to `/index.html`
+
+### Communication Flow
+1. Browser hits Railway's public URL → routed to the Frontend (nginx) container
+2. Nginx serves the Vue SPA static files directly
+3. API calls (`/api/*`) are reverse-proxied to the Backend on port 8081
+4. WebSocket connections (`/ws`) are proxied with Upgrade headers
+5. Backend connects to the Railway-managed PostgreSQL database
+6. Frontend ↔ Backend communication uses Railway's internal private network (`RAILWAY_PRIVATE_DOMAIN`)
+
+### Infrastructure as Code
+The deployment is defined in `.railway/railway.ts` using the `railway/iac` module:
+```ts
+// Key resources: Postgres database, Backend service, Frontend service
+// Backend env: SPRING_PROFILES_ACTIVE, PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE
+// Frontend env: BACKEND_HOST (from backend.env.RAILWAY_PRIVATE_DOMAIN), BACKEND_PORT
+```
+
+### Useful Commands
+```bash
+railway config plan          # Preview infrastructure changes
+railway config plan --json   # Machine-readable preview
+railway config apply         # Apply changes
+```
+
+---
 
 ## 核心需求
 

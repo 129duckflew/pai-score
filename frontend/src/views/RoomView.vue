@@ -66,6 +66,15 @@
       </div>
     </div>
 
+    <!-- Mahjong Calculator -->
+    <div class="card">
+      <div class="flex items-center gap-8">
+        <span class="flex-1 text-lg">🀄 麻将计算器</span>
+        <button class="btn-primary" @click="showMahjongCalc = true">打开</button>
+      </div>
+      <p class="text-muted mt-12">输入手牌，分析胡牌牌型与听牌推荐</p>
+    </div>
+
     <!-- Score entries history -->
     <div class="card" v-if="entries.length">
       <h3 class="mb-12">记分记录</h3>
@@ -165,6 +174,9 @@
       @close="diceRoller.show = false"
     />
 
+    <!-- Mahjong Calculator modal -->
+    <MahjongCalculator v-if="showMahjongCalc" @close="showMahjongCalc = false" />
+
     <!-- Floating action menu -->
     <div class="fab-container" v-if="isActive">
       <div v-if="fabOpen" class="fab-menu">
@@ -183,6 +195,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { wsService } from '../services/websocket'
 import DiceRoller from '../components/DiceRoller.vue'
+import MahjongCalculator from '../components/MahjongCalculator.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -209,6 +222,9 @@ const modalError = ref('')
 // Dice roller
 const diceRoller = ref({ show: false, dice: [1, 1], roller: null })
 const fabOpen = ref(false)
+
+// Mahjong Calculator
+const showMahjongCalc = ref(false)
 
 const sortedEntries = computed(() => {
   return [...entries.value].sort((a, b) => a.id - b.id)
