@@ -144,19 +144,13 @@
         <div class="modal-body">
           <label class="mb-4">分数</label>
           <input
+            ref="scoreInputEl"
             v-model.number="scoreInput"
             type="number"
+            inputmode="decimal"
             placeholder="输入分数"
             class="full-width"
             autofocus
-            @keyup.enter="submitModalScore"
-          />
-          <label class="mt-12 mb-4">备注（可选）</label>
-          <input
-            v-model="noteInput"
-            type="text"
-            placeholder="例如：自摸、点炮等"
-            class="full-width"
             @keyup.enter="submitModalScore"
           />
         </div>
@@ -195,7 +189,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { wsService } from '../services/websocket'
 import DiceRoller from '../components/DiceRoller.vue'
@@ -220,7 +214,7 @@ const isFinished = computed(() => roomState.value?.status === 'FINISHED')
 const showModal = ref(false)
 const scoringTarget = ref(null)
 const scoreInput = ref('')
-const noteInput = ref('')
+const scoreInputEl = ref(null)
 const modalError = ref('')
 
 // Dice roller
@@ -305,16 +299,15 @@ function rollDice() {
 function openScoreModal(player) {
   scoringTarget.value = player
   scoreInput.value = ''
-  noteInput.value = ''
   modalError.value = ''
   showModal.value = true
+  nextTick(() => { scoreInputEl.value?.focus() })
 }
 
 function closeModal() {
   showModal.value = false
   scoringTarget.value = null
   scoreInput.value = ''
-  noteInput.value = ''
   modalError.value = ''
 }
 
@@ -325,7 +318,7 @@ function submitModalScore() {
     roomCode,
     targetPlayerId: scoringTarget.value.playerId,
     score: Number(scoreInput.value),
-    note: noteInput.value || ''
+    note: ''
   })
   closeModal()
 }
