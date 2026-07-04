@@ -515,6 +515,12 @@ function analyze() {
 }
 .mjc-btn-sec:hover { border-color: #999; color: #333; }
 
+.mjc-modal,
+.mjc-tile,
+.mjc-hand-tile-wrap {
+  touch-action: manipulation;
+}
+
 @media (max-width: 600px) {
   .mjc-modal { padding: 14px; max-width: 100vw; border-radius: 0; max-height: 100vh; }
   .mjc-header { margin-bottom: 12px; }
