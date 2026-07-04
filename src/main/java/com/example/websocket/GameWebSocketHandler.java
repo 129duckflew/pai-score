@@ -150,6 +150,14 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 "type", "PLAYER_LIST",
                 "players", buildPlayerList(room.getId(), null)
             ));
+
+            User joinedUser = userService.findById(userId);
+            sessionManager.broadcast(roomCode, Map.of(
+                "type", "PLAYER_JOINED",
+                "userId", userId,
+                "username", joinedUser != null ? joinedUser.getUsername() : "?",
+                "avatar", joinedUser != null ? joinedUser.getAvatar() : null
+            ));
         } catch (Exception e) {
             sendError(session, e.getMessage());
         }

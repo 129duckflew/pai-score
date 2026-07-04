@@ -8,6 +8,14 @@
       </span>
     </div>
 
+    <!-- Toast notifications -->
+    <div class="toast-container" v-if="toasts.length">
+      <div v-for="t in toasts" :key="t.id" class="toast">
+        <span class="toast-avatar">{{ t.avatar || '?' }}</span>
+        <span>{{ t.message }}</span>
+      </div>
+    </div>
+
     <div class="card">
       <div class="flex items-center gap-8 mb-12">
         <span class="text-lg">玩家列表</span>
@@ -228,6 +236,17 @@ const fabOpen = ref(false)
 // Mahjong Calculator
 const showMahjongCalc = ref(false)
 
+// Toast notifications
+const toasts = ref([])
+let toastId = 0
+function addToast(message, avatar) {
+  const id = ++toastId
+  toasts.value.push({ id, message, avatar })
+  setTimeout(() => {
+    toasts.value = toasts.value.filter(t => t.id !== id)
+  }, 4000)
+}
+
 const sortedEntries = computed(() => {
   const sorted = [...entries.value].sort((a, b) => b.id - a.id)
   return sorted.map(e => ({
@@ -250,6 +269,7 @@ onMounted(() => {
   unsubs.push(wsService.on('GAME_OVER', handleGameOver))
   unsubs.push(wsService.on('DICE_ROLL_RESULT', handleDiceRollResult))
   unsubs.push(wsService.on('ROOM_DESTROYED', handleRoomDestroyed))
+  unsubs.push(wsService.on('PLAYER_JOINED', handlePlayerJoined))
   unsubs.push(wsService.on('ERROR', (msg) => { error.value = msg.message }))
 
   wsService.send('GET_ROOM_STATE', { roomCode })
@@ -270,6 +290,10 @@ function handleRoomState(msg) {
 
 function handlePlayerList(msg) {
   players.value = msg.players || []
+}
+
+function handlePlayerJoined(msg) {
+  addToast(`${msg.username} 加入了房间`, msg.avatar)
 }
 
 function handleGameStarted(msg) {
@@ -614,5 +638,40 @@ input[type="number"].full-width {
   .modal-footer button { width: 100%; }
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -14px; padding: 0 14px; }
   table { min-width: 500px; }
+}
+
+.toast-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #333;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  animation: toast-in .3s ease-out;
+  pointer-events: auto;
+}
+
+.toast-avatar {
+  font-size: 18px;
+  line-height: 1;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>
