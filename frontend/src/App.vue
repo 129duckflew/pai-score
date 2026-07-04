@@ -5,14 +5,26 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { wsService } from './services/websocket'
+
+const router = useRouter()
+let unsubAuthFailed = null
 
 onMounted(() => {
   const token = localStorage.getItem('token')
   if (token) {
     wsService.connect(token)
   }
+  unsubAuthFailed = wsService.on('AUTH_FAILED', () => {
+    localStorage.clear()
+    router.push('/login')
+  })
+})
+
+onUnmounted(() => {
+  if (unsubAuthFailed) unsubAuthFailed()
 })
 </script>
 

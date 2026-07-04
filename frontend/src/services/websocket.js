@@ -45,6 +45,11 @@ class WebSocketService {
           localStorage.setItem('username', msg.username)
           if (msg.avatar) localStorage.setItem('avatar', msg.avatar)
         }
+        if (msg.type === 'ERROR' && (msg.message === 'token 无效' || msg.message === '缺少 token')) {
+          this.shouldReconnect = false
+          this._emit('AUTH_FAILED', msg)
+          return
+        }
         this._emit(msg.type, msg)
       } catch (err) {
         console.error('WS parse error:', err)
