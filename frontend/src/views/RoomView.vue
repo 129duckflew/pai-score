@@ -193,7 +193,7 @@ onMounted(() => {
   unsubs.push(wsService.on('GAME_OVER', handleGameOver))
   unsubs.push(wsService.on('ERROR', (msg) => { error.value = msg.message }))
 
-  wsService.send('JOIN_ROOM', { roomCode })
+  wsService.send('GET_ROOM_STATE', { roomCode })
 })
 
 onUnmounted(() => {
