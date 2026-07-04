@@ -79,13 +79,24 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="e in sortedEntries" :key="e.id">
+          <tr v-for="e in sortedEntries" :key="e.id" :class="e.type === 'DICE_ROLL' ? 'dice-row' : ''">
             <td class="text-muted">{{ formatTime(e.createdAt) }}</td>
-            <td>{{ playerName(e.targetPlayerId) }}</td>
-            <td :class="e.score >= 0 ? 'score-pos' : 'score-neg'">
-              {{ e.score >= 0 ? '+' : '' }}{{ e.score }}
+            <td>
+              <template v-if="e.type === 'DICE_ROLL'">{{ playerName(e.targetPlayerId) }} 🎲</template>
+              <template v-else>{{ playerName(e.targetPlayerId) }}</template>
             </td>
-            <td class="text-muted">{{ e.note || '-' }}</td>
+            <td>
+              <template v-if="e.type === 'DICE_ROLL'">🎲 {{ e.score }}</template>
+              <template v-else>
+                <span :class="e.score >= 0 ? 'score-pos' : 'score-neg'">
+                  {{ e.score >= 0 ? '+' : '' }}{{ e.score }}
+                </span>
+              </template>
+            </td>
+            <td class="text-muted">
+              <template v-if="e.type === 'DICE_ROLL'">{{ e.note || '-' }}</template>
+              <template v-else>{{ e.note || '-' }}</template>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -145,6 +156,25 @@
         <p v-if="modalError" class="alert alert-error mt-12">{{ modalError }}</p>
       </div>
     </div>
+
+    <!-- Dice Roller -->
+    <DiceRoller
+      v-if="diceRoller.show"
+      :dice="diceRoller.dice"
+      :roller="diceRoller.roller"
+      @close="diceRoller.show = false"
+    />
+
+    <!-- Floating action menu -->
+    <div class="fab-container" v-if="isActive">
+      <div v-if="fabOpen" class="fab-menu">
+        <button class="fab-menu-item" @click="rollDice">🎲 投掷骰子</button>
+      </div>
+      <button class="fab-btn" @click="fabOpen = !fabOpen">
+        <span v-if="fabOpen">✕</span>
+        <span v-else>🎲</span>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -152,6 +182,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { wsService } from '../services/websocket'
+import DiceRoller from '../components/DiceRoller.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -175,6 +206,10 @@ const scoreInput = ref('')
 const noteInput = ref('')
 const modalError = ref('')
 
+// Dice roller
+const diceRoller = ref({ show: false, dice: [1, 1], roller: null })
+const fabOpen = ref(false)
+
 const sortedEntries = computed(() => {
   return [...entries.value].sort((a, b) => a.id - b.id)
 })
@@ -191,6 +226,7 @@ onMounted(() => {
   unsubs.push(wsService.on('GAME_STARTED', handleGameStarted))
   unsubs.push(wsService.on('SCORE_ADDED', handleScoreAdded))
   unsubs.push(wsService.on('GAME_OVER', handleGameOver))
+  unsubs.push(wsService.on('DICE_ROLL_RESULT', handleDiceRollResult))
   unsubs.push(wsService.on('ERROR', (msg) => { error.value = msg.message }))
 
   wsService.send('GET_ROOM_STATE', { roomCode })
@@ -223,6 +259,22 @@ function handleGameOver(msg) {
   roomState.value = { ...roomState.value, status: 'FINISHED' }
   players.value = msg.players || []
   entries.value = msg.entries || []
+}
+
+function handleDiceRollResult(msg) {
+  entries.value.push(msg.entry)
+  players.value = msg.players || []
+  diceRoller.value = {
+    show: true,
+    dice: msg.dice || [1, 1],
+    roller: msg.roller || null
+  }
+  fabOpen.value = false
+}
+
+function rollDice() {
+  wsService.send('ROLL_DICE', { roomCode })
+  fabOpen.value = false
 }
 
 function openScoreModal(player) {
@@ -432,5 +484,70 @@ function formatTime(t) {
 
 input[type="number"].full-width {
   width: 100%;
+}
+
+/* Floating action button */
+.fab-container {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  z-index: 150;
+}
+
+.fab-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: #1890ff;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(24, 144, 255, 0.5);
+}
+
+.fab-menu {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.fab-menu-item {
+  display: block;
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 15px;
+  text-align: left;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.fab-menu-item:hover {
+  background: #f0f5ff;
+}
+
+.dice-row {
+  background: #fffbe6;
+}
+
+.dice-row:hover {
+  background: #fff7cc;
 }
 </style>

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Random;
 
 @Service
 public class GameService {
@@ -19,6 +20,7 @@ public class GameService {
     private final RoomPlayerRepository playerRepository;
     private final ScoreEntryRepository entryRepository;
     private final UserService userService;
+    private final Random random = new Random();
 
     public GameService(RoomRepository roomRepository, RoomPlayerRepository playerRepository,
                        ScoreEntryRepository entryRepository, UserService userService) {
@@ -99,6 +101,33 @@ public class GameService {
 
         room.setStatus("FINISHED");
         return roomRepository.save(room);
+    }
+
+    @Transactional
+    public ScoreEntry rollDice(Long userId, String roomCode) {
+        Room room = roomRepository.findByRoomCode(roomCode)
+                .orElseThrow(() -> new RuntimeException("房间不存在"));
+
+        if (!"PLAYING".equals(room.getStatus())) {
+            throw new RuntimeException("游戏未进行中");
+        }
+
+        RoomPlayer player = playerRepository.findByRoomIdAndUserId(room.getId(), userId)
+                .orElseThrow(() -> new RuntimeException("玩家不在此房间"));
+
+        int d1 = random.nextInt(6) + 1;
+        int d2 = random.nextInt(6) + 1;
+        int total = d1 + d2;
+
+        ScoreEntry entry = new ScoreEntry();
+        entry.setRoomId(room.getId());
+        entry.setTargetPlayerId(player.getId());
+        entry.setAddedByUserId(userId);
+        entry.setScore(total);
+        entry.setNote("🎲" + d1 + " 🎲" + d2);
+        entry.setType("DICE_ROLL");
+        entry.setCreatedAt(LocalDateTime.now());
+        return entryRepository.save(entry);
     }
 
     public List<ScoreEntry> getEntries(Long roomId) {

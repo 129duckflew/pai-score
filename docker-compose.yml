@@ -11,6 +11,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/cardgame;AUTO_SERVER=TRUE
     volumes:
       - h2-data:/data
+      - maven-cache:/root/.m2
     restart: unless-stopped
 
   frontend:
@@ -26,3 +27,4 @@ services:
 
 volumes:
   h2-data:
+  maven-cache:

@@ -82,6 +82,7 @@ public class UserController {
             ei.setId(e.getId());
             ei.setTargetPlayerId(e.getTargetPlayerId());
             ei.setScore(e.getScore());
+            ei.setType(e.getType());
             ei.setNote(e.getNote());
             ei.setCreatedAt(e.getCreatedAt() != null ? e.getCreatedAt().toString() : null);
             RoomPlayer target = players.stream()

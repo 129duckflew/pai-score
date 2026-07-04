@@ -22,6 +22,9 @@ public class ScoreEntry {
     @Column(nullable = false)
     private Integer score;
 
+    @Column(length = 20)
+    private String type = "SCORE";
+
     @Column(length = 200)
     private String note;
 
@@ -43,6 +46,8 @@ public class ScoreEntry {
     public void setAddedByUserId(Long addedByUserId) { this.addedByUserId = addedByUserId; }
     public Integer getScore() { return score; }
     public void setScore(Integer score) { this.score = score; }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
     public LocalDateTime getCreatedAt() { return createdAt; }

@@ -81,6 +81,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 case "SUBMIT_SCORE" -> handleSubmitScore(session, userId, msg);
                 case "END_GAME" -> handleEndGame(session, userId, msg);
                 case "GET_ROOM_STATE" -> handleGetRoomState(session, userId, msg);
+                case "ROLL_DICE" -> handleRollDice(session, userId, msg);
                 default -> sendError(session, "未知消息类型: " + type);
             }
         } catch (Exception e) {
@@ -208,6 +209,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             entryData.put("score", entry.getScore());
             entryData.put("note", entry.getNote());
             entryData.put("addedByUserId", entry.getAddedByUserId());
+            entryData.put("type", entry.getType());
             entryData.put("createdAt", entry.getCreatedAt() != null ? entry.getCreatedAt().toString() : null);
 
             sessionManager.broadcast(roomCode, Map.of(
@@ -241,6 +243,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 m.put("score", e.getScore());
                 m.put("note", e.getNote());
                 m.put("addedByUserId", e.getAddedByUserId());
+                m.put("type", e.getType());
                 m.put("createdAt", e.getCreatedAt() != null ? e.getCreatedAt().toString() : null);
                 return m;
             }).collect(Collectors.toList());
@@ -266,6 +269,49 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    private void handleRollDice(WebSocketSession session, Long userId, Map<String, Object> msg) {
+        try {
+            String roomCode = (String) msg.get("roomCode");
+            ScoreEntry entry = gameService.rollDice(userId, roomCode);
+            Room room = roomService.findByCode(roomCode);
+
+            String note = entry.getNote();
+            int d1 = 0, d2 = 0;
+            if (note != null && note.contains("🎲")) {
+                String[] parts = note.split("🎲");
+                if (parts.length >= 3) {
+                    d1 = Integer.parseInt(parts[1].trim());
+                    d2 = Integer.parseInt(parts[2].trim());
+                }
+            }
+
+            User roller = userService.findById(userId);
+
+            Map<String, Object> entryData = new HashMap<>();
+            entryData.put("id", entry.getId());
+            entryData.put("targetPlayerId", entry.getTargetPlayerId());
+            entryData.put("score", entry.getScore());
+            entryData.put("note", entry.getNote());
+            entryData.put("addedByUserId", entry.getAddedByUserId());
+            entryData.put("type", entry.getType());
+            entryData.put("createdAt", entry.getCreatedAt() != null ? entry.getCreatedAt().toString() : null);
+
+            sessionManager.broadcast(roomCode, Map.of(
+                "type", "DICE_ROLL_RESULT",
+                "entry", entryData,
+                "roller", Map.of(
+                    "userId", roller.getId(),
+                    "username", roller.getUsername(),
+                    "avatar", roller.getAvatar()
+                ),
+                "dice", List.of(d1, d2),
+                "players", buildPlayerList(room.getId(), null)
+            ));
+        } catch (Exception e) {
+            sendError(session, e.getMessage());
+        }
+    }
+
     private void sendRoomState(WebSocketSession session, Room room) {
         List<ScoreEntry> entries = gameService.getEntries(room.getId());
         List<Map<String, Object>> entriesData = entries.stream().map(e -> {
@@ -275,6 +321,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             m.put("score", e.getScore());
             m.put("note", e.getNote());
             m.put("addedByUserId", e.getAddedByUserId());
+            m.put("type", e.getType());
             m.put("createdAt", e.getCreatedAt() != null ? e.getCreatedAt().toString() : null);
             return m;
         }).collect(Collectors.toList());

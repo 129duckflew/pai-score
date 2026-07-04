@@ -41,6 +41,7 @@ public class RoomHistoryResponse {
         private Long targetPlayerId;
         private String targetPlayerName;
         private int score;
+        private String type;
         private String note;
         private String addedByUsername;
         private String createdAt;
@@ -53,6 +54,8 @@ public class RoomHistoryResponse {
         public void setTargetPlayerName(String targetPlayerName) { this.targetPlayerName = targetPlayerName; }
         public int getScore() { return score; }
         public void setScore(int score) { this.score = score; }
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
         public String getNote() { return note; }
         public void setNote(String note) { this.note = note; }
         public String getAddedByUsername() { return addedByUsername; }
