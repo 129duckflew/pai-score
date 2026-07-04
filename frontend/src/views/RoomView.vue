@@ -215,6 +215,7 @@ const roomState = ref(null)
 const players = ref([])
 const entries = ref([])
 const error = ref('')
+const leavingRef = ref(false)
 
 const myUserId = computed(() => Number(localStorage.getItem('userId')))
 const isHost = computed(() => roomState.value?.hostId === myUserId.value)
@@ -277,7 +278,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   unsubs.forEach(fn => fn())
-  if (wsService.connected) {
+  if (wsService.connected && !leavingRef.value) {
     wsService.send('LEAVE_ROOM', { roomCode })
   }
 })
@@ -369,6 +370,7 @@ function endGame() {
 }
 
 function leaveRoom() {
+  leavingRef.value = true
   wsService.send('LEAVE_ROOM', { roomCode })
   router.push('/lobby')
 }
