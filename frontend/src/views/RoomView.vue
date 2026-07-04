@@ -93,13 +93,13 @@
             <td class="text-muted">{{ formatTime(e.createdAt) }}</td>
             <td>
               <template v-if="e.type === 'DICE_ROLL'">{{ playerName(e.targetPlayerId) }} 🎲</template>
-              <template v-else>{{ playerName(e.sourcePlayerId) }} → {{ playerName(e.targetPlayerId) }}</template>
+              <template v-else>{{ e._display.operationText }}</template>
             </td>
             <td>
               <template v-if="e.type === 'DICE_ROLL'">🎲 {{ e.score }}</template>
               <template v-else>
-                <span :class="e.score >= 0 ? 'score-pos' : 'score-neg'">
-                  {{ e.score >= 0 ? '+' : '' }}{{ e.score }}
+                <span :class="e._display.cssClass">
+                  {{ e._display.displayScore }}
                 </span>
               </template>
             </td>
@@ -194,6 +194,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { wsService } from '../services/websocket'
 import DiceRoller from '../components/DiceRoller.vue'
 import MahjongCalculator from '../components/MahjongCalculator.vue'
+import { getScoreDisplay } from '../utils/score-display'
 
 const route = useRoute()
 const router = useRouter()
@@ -225,7 +226,11 @@ const fabOpen = ref(false)
 const showMahjongCalc = ref(false)
 
 const sortedEntries = computed(() => {
-  return [...entries.value].sort((a, b) => b.id - a.id)
+  const sorted = [...entries.value].sort((a, b) => b.id - a.id)
+  return sorted.map(e => ({
+    ...e,
+    _display: e.type === 'SCORE' ? getScoreDisplay(e, myUserId.value, players.value) : null,
+  }))
 })
 
 const sortedPlayers = computed(() => {
