@@ -107,6 +107,10 @@ public class RoomService {
         return playerRepository.findByRoomId(roomId);
     }
 
+    public List<RoomPlayer> getPlayersOrdered(Long roomId) {
+        return playerRepository.findByRoomIdOrderByJoinedAtAsc(roomId);
+    }
+
     public List<Room> getActiveRooms() {
         return roomRepository.findByStatus("WAITING");
     }

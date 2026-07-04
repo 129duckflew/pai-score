@@ -8,6 +8,7 @@ import java.util.Optional;
 
 public interface RoomPlayerRepository extends JpaRepository<RoomPlayer, Long> {
     List<RoomPlayer> findByRoomId(Long roomId);
+    List<RoomPlayer> findByRoomIdOrderByJoinedAtAsc(Long roomId);
     Optional<RoomPlayer> findByRoomIdAndUserId(Long roomId, Long userId);
     long countByRoomId(Long roomId);
     List<RoomPlayer> findByUserId(Long userId);

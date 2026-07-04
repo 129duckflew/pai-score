@@ -347,7 +347,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     }
 
     private List<Map<String, Object>> buildPlayerList(Long roomId, Long excludeUserId) {
-        return roomService.getPlayers(roomId).stream()
+        return roomService.getPlayersOrdered(roomId).stream()
             .filter(p -> excludeUserId == null || !p.getUserId().equals(excludeUserId))
             .map(p -> {
                 Map<String, Object> m = new HashMap<>();
@@ -357,6 +357,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 m.put("username", u != null ? u.getUsername() : "?");
                 m.put("avatar", u != null ? u.getAvatar() : null);
                 m.put("totalScore", p.getTotalScore());
+                m.put("joinedAt", p.getJoinedAt() != null ? p.getJoinedAt().toString() : null);
                 return m;
             })
             .collect(Collectors.toList());
