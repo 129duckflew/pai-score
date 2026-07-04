@@ -11,10 +11,10 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>springboot-hello</artifactId>
+    <artifactId>pai-score</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>springboot-hello</name>
+    <name>pai-score</name>
     <description>Card Game Score Keeper</description>
 
     <properties>

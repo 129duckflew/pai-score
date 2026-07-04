@@ -16,7 +16,7 @@ const dbVolume = volume("postgres-volume", {
 });
 
 const backend = service("backend", {
-  source: github("129duckflew/springboot-hello", { branch: "main" }),
+  source: github("129duckflew/pai-score", { branch: "main" }),
   build: {
     builder: "DOCKERFILE",
     dockerfilePath: "Dockerfile",
@@ -34,7 +34,7 @@ const backend = service("backend", {
 });
 
 const frontend = service("frontend", {
-  source: github("129duckflew/springboot-hello", {
+  source: github("129duckflew/pai-score", {
     branch: "main",
     rootDirectory: "frontend",
   }),
@@ -52,6 +52,6 @@ const frontend = service("frontend", {
   },
 });
 
-export default project("springboot-hello", {
+export default project("pai-score", {
   resources: [db, dbVolume, backend, frontend],
 });

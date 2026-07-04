@@ -53,7 +53,7 @@ The project is deployed on [Railway](https://railway.app) using Infrastructure-a
 - Disk usage alerts at 80%, 95%, and 100%
 
 ### 2. Backend (Spring Boot)
-- **Source:** GitHub (`129duckflew/springboot-hello`, branch `main`)
+- **Source:** GitHub (`129duckflew/pai-score`, branch `main`)
 - **Build:** Dockerfile at project root — multi-stage Maven build (JDK 21) producing a JRE runtime image
 - **Ports:**
   - `PORT`（默认 8081）— REST API（Tomcat）
@@ -181,7 +181,7 @@ docker compose up -d
 ## 项目结构
 
 ```
-springboot-hello/
+pai-score/
 ├── Dockerfile                          # 后端 Dockerfile (Maven + JRE)
 ├── docker-compose.yml                  # Docker 编排
 ├── pom.xml                             # Maven 依赖
