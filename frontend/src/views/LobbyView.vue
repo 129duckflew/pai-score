@@ -60,7 +60,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { wsService } from '../services/websocket'
+import { wsService } from '../services/socketio'
 import { getUserHistory, getActiveRooms } from '../services/api'
 
 const router = useRouter()

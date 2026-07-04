@@ -7,7 +7,7 @@
 <script setup>
 import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { wsService } from './services/websocket'
+import { wsService } from './services/socketio'
 
 const router = useRouter()
 let unsubAuthFailed = null

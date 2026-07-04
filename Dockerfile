@@ -10,5 +10,7 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
 ENV PORT=8080
+ENV SOCKETIO_PORT=8089
 EXPOSE 8080
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT} -jar app.jar"]
+EXPOSE 8089
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT} -Dsocketio.port=${SOCKETIO_PORT} -jar app.jar"]
