@@ -19,6 +19,9 @@ public class Room {
     @Column(nullable = false, length = 20)
     private String status = "WAITING";
 
+    @Column(length = 100)
+    private String name;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -35,6 +38,8 @@ public class Room {
     public void setHostId(Long hostId) { this.hostId = hostId; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

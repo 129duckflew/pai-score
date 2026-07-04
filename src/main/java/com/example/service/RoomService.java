@@ -29,9 +29,12 @@ public class RoomService {
     @Transactional
     public Room createRoom(Long hostUserId) {
         checkNoActiveRoom(hostUserId);
+        User hostUser = userService.findById(hostUserId);
+        if (hostUser == null) throw new RuntimeException("用户不存在");
         Room room = new Room();
         room.setRoomCode(generateRoomCode());
         room.setHostId(hostUserId);
+        room.setName(hostUser.getUsername() + "创建的房间");
         room.setStatus("WAITING");
         room.setCreatedAt(LocalDateTime.now());
         room = roomRepository.save(room);
