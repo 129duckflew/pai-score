@@ -272,6 +272,9 @@ onMounted(() => {
   unsubs.push(wsService.on('ROOM_DESTROYED', handleRoomDestroyed))
   unsubs.push(wsService.on('PLAYER_JOINED', handlePlayerJoined))
   unsubs.push(wsService.on('ERROR', (msg) => { error.value = msg.message }))
+  unsubs.push(wsService.on('connected', () => {
+    wsService.send('GET_ROOM_STATE', { roomCode })
+  }))
 
   wsService.send('GET_ROOM_STATE', { roomCode })
 })

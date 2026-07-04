@@ -81,6 +81,12 @@ onMounted(() => {
   unsubs.push(wsService.on('ROOM_JOINED', (msg) => {
     router.push('/room/' + msg.roomCode)
   }))
+  unsubs.push(wsService.on('ROOM_DESTROYED', () => {
+    loadHistory()
+  }))
+  unsubs.push(wsService.on('connected', () => {
+    loadHistory()
+  }))
   unsubs.push(wsService.on('ERROR', (msg) => {
     error.value = msg.message
   }))

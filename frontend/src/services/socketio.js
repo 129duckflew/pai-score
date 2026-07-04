@@ -9,6 +9,7 @@ class SocketIOService {
     this.connected = false
     this.userId = null
     this.username = null
+    this.pendingQueue = []
   }
 
   connect(token) {
@@ -27,6 +28,7 @@ class SocketIOService {
     this.socket.on('connect', () => {
       this.connected = true
       this._emit('connected')
+      this._flushQueue()
     })
 
     this.socket.on('disconnect', () => {
@@ -65,7 +67,19 @@ class SocketIOService {
   send(type, data = {}) {
     if (this.socket && this.socket.connected) {
       this.socket.emit(type, data)
+    } else if (this.socket) {
+      this.pendingQueue.push({ type, data })
     }
+  }
+
+  _flushQueue() {
+    const queue = this.pendingQueue
+    this.pendingQueue = []
+    queue.forEach(({ type, data }) => {
+      if (this.socket && this.socket.connected) {
+        this.socket.emit(type, data)
+      }
+    })
   }
 
   on(event, callback) {
@@ -86,6 +100,7 @@ class SocketIOService {
       this.socket = null
     }
     this.connected = false
+    this.pendingQueue = []
   }
 }
 

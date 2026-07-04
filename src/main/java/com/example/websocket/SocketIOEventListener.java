@@ -52,7 +52,6 @@ public class SocketIOEventListener {
             Room room = roomService.findByCode(user.getActiveRoomCode());
             if (room != null && !"FINISHED".equals(room.getStatus())) {
                 client.joinRoom(room.getRoomCode());
-                sendRoomState(client, room);
             }
         }
     }
@@ -274,6 +273,7 @@ public class SocketIOEventListener {
             Room room = roomService.findByCode(roomCode);
             if (room == null) throw new RuntimeException("房间不存在");
 
+            client.joinRoom(roomCode);
             sendRoomState(client, room);
         } catch (Exception e) {
             sendError(client, e.getMessage());
