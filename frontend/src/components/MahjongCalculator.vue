@@ -82,8 +82,19 @@
               <span v-for="(cnt, tile, i) in ukeire" :key="tile" class="mjc-wait-item">
                 <span class="mjc-wait-tile" v-html="tileSvg(tile, 30)"></span><span v-if="cnt > 0" class="mjc-wait-remain">剩{{ cnt }}张</span>{{ i < Object.keys(ukeire).length - 1 ? '、' : '' }}
             </span>
+            <span class="mjc-ukeire-total">共 {{ totalUkeire }} 张牌可胡</span>
           </span>
-          <span class="mjc-ukeire-total">共 {{ totalUkeire }} 张牌可胡</span>
+          <div v-if="discardCandidates && Object.keys(discardCandidates).length" class="mjc-discard-section">
+            <div class="mjc-discard-title">打出一张多余牌后可胡：</div>
+            <div v-for="(info, tile) in discardCandidates" :key="tile" class="mjc-discard-line">
+              <span class="mjc-wait-tile" v-html="tileSvg(tile, 26)"></span>
+              <span class="mjc-discard-arrow">→</span>
+              <span v-for="(cnt, wt, i) in info.ukeire" :key="wt" class="mjc-wait-item">
+                <span class="mjc-wait-tile" v-html="tileSvg(wt, 26)"></span><span class="mjc-wait-remain">剩{{ cnt }}张</span>{{ i < Object.keys(info.ukeire).length - 1 ? '、' : '' }}
+              </span>
+              <span class="mjc-wait-remain">共{{ info.totalUkeire }}张</span>
+            </div>
+          </div>
         </div>
         <div v-else class="mjc-result-info">
           向听数：<strong>{{ result }}</strong>（还需 {{ result + 1 }} 步听牌）
@@ -161,6 +172,7 @@ function removeTile(i) {
   else handCount[code] = cur
   result.value = null
   ukeire.value = null
+  discardCandidates.value = {}
 }
 
 function clearAll() {
@@ -179,8 +191,8 @@ function analyze() {
   result.value = shanten
   ukeire.value = null
   discardCandidates.value = {}
-
   const len = tiles.value.length
+  const isToPlay = len % 3 === 2
   const rs = new RuleSet('MCR')
 
   if (shanten === -1) return
@@ -188,21 +200,47 @@ function analyze() {
   if (shanten === 0) {
     try {
       const u = rs.calUkeire(hand)
-      ukeire.value = u.ukeire || null
-      totalUkeire.value = u.totalUkeire || 0
+      if (isToPlay && u.normalDiscard) {
+        // 3n+2 (14 tiles) tenpai — extra tile to discard
+        const dc = {}
+        for (const [tile, ukeireMap] of Object.entries(u.normalDiscard)) {
+          if (Object.keys(ukeireMap).length > 0) {
+            const total = Object.values(ukeireMap).reduce((s, v) => s + v, 0)
+            dc[tile] = { ukeire: ukeireMap, totalUkeire: total }
+          }
+        }
+        discardCandidates.value = dc
+      } else if (u.ukeire) {
+        // 3n+1 (13 tiles) tenpai — direct ukeire
+        ukeire.value = u.ukeire
+        totalUkeire.value = u.totalUkeire || 0
+      }
     } catch (e) {
       ukeire.value = null
     }
     return
   }
 
-  if (len % 3 === 2) {
+  // shanten >= 1
+  if (isToPlay) {
     try {
       const u = rs.calUkeire(hand)
       const candidates = {}
       if (u.normalDiscard) {
-        for (const [tile, info] of Object.entries(u.normalDiscard)) {
-          if (info.shanten < shanten) candidates[tile] = info
+        for (const [tile, ukeireMap] of Object.entries(u.normalDiscard)) {
+          if (Object.keys(ukeireMap).length > 0) {
+            // verify shanten improves by computing manually
+            const copy = [...tiles.value]
+            const idx = copy.indexOf(tile)
+            if (idx !== -1) {
+              copy.splice(idx, 1)
+              const afterShanten = cal.calShantenMenzu(tilesToHand(copy))
+              if (afterShanten < shanten) {
+                const total = Object.values(ukeireMap).reduce((s, v) => s + v, 0)
+                candidates[tile] = { ukeire: ukeireMap, totalUkeire: total }
+              }
+            }
+          }
         }
       }
       discardCandidates.value = candidates
