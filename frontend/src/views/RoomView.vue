@@ -225,7 +225,7 @@ const fabOpen = ref(false)
 const showMahjongCalc = ref(false)
 
 const sortedEntries = computed(() => {
-  return [...entries.value].sort((a, b) => a.id - b.id)
+  return [...entries.value].sort((a, b) => b.id - a.id)
 })
 
 const sortedPlayers = computed(() => {
