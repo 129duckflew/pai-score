@@ -40,6 +40,7 @@
       </div>
     </div>
 
+    <p v-if="loading" class="text-muted text-center">加载中...</p>
     <p v-if="error" class="alert alert-error">{{ error }}</p>
   </div>
 </template>
@@ -56,6 +57,7 @@ const roomCode = ref('')
 const creating = ref(false)
 const error = ref('')
 const rooms = ref([])
+const loading = ref(false)
 let unsubs = []
 
 onMounted(() => {
@@ -76,13 +78,16 @@ onUnmounted(() => {
 })
 
 async function loadHistory() {
+  loading.value = true
   try {
     const uid = localStorage.getItem('userId')
     if (uid) {
       rooms.value = await getUserHistory(uid)
     }
   } catch (e) {
-    // ignore
+    error.value = '加载房间列表失败'
+  } finally {
+    loading.value = false
   }
 }
 
