@@ -1,7 +1,7 @@
 <template>
   <div class="room">
     <div class="header flex items-center gap-12 mb-12">
-      <button class="btn-secondary" @click="$router.push('/lobby')">← 返回</button>
+      <button class="btn-secondary" @click="goBack">← 返回</button>
       <h2 class="flex-1">房间 {{ roomCode }}</h2>
       <span v-if="roomState" :class="'badge badge-' + roomState.status.toLowerCase()">
         {{ statusText(roomState.status) }}
@@ -43,9 +43,12 @@
     <!-- Waiting: host controls -->
     <div class="card" v-if="isWaiting && isHost">
       <p class="text-muted mb-12">邀请码: <strong>{{ roomCode }}</strong>（分享给好友加入）</p>
-      <button class="btn-success" @click="startGame" :disabled="players.length < 2">
-        开始游戏（至少2人）
-      </button>
+      <div class="flex gap-8">
+        <button class="btn-success flex-1" @click="startGame" :disabled="players.length < 2">
+          开始游戏（至少2人）
+        </button>
+        <button class="btn-danger-outline" @click="confirmDestroyRoom">解散房间</button>
+      </div>
     </div>
 
     <!-- Waiting: non-host -->
@@ -254,6 +257,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   unsubs.forEach(fn => fn())
+  if (wsService.connected) {
+    wsService.send('LEAVE_ROOM', { roomCode })
+  }
 })
 
 function handleRoomState(msg) {
@@ -341,6 +347,22 @@ function endGame() {
 function leaveRoom() {
   wsService.send('LEAVE_ROOM', { roomCode })
   router.push('/lobby')
+}
+
+function goBack() {
+  if (isHost.value) {
+    if (confirm('退出会解散房间，其他玩家将被移出，确定退出吗？')) {
+      leaveRoom()
+    }
+  } else {
+    leaveRoom()
+  }
+}
+
+function confirmDestroyRoom() {
+  if (confirm('解散房间后所有玩家将被移出，确定要解散吗？')) {
+    leaveRoom()
+  }
 }
 
 function playerName(playerId) {

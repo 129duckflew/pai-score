@@ -41,6 +41,7 @@ input:focus, select:focus { border-color: #4a90d9; }
 .btn-primary { background: #4a90d9; color: #fff; }
 .btn-success { background: #52c41a; color: #fff; }
 .btn-danger { background: #ff4d4f; color: #fff; }
+.btn-danger-outline { background: #fff; color: #ff4d4f; border: 1px solid #ff4d4f; }
 .btn-warning { background: #faad14; color: #fff; }
 .btn-secondary { background: #e8e8e8; color: #333; }
 .flex { display: flex; }
