@@ -11,30 +11,30 @@
           <span class="mjc-label">万</span>
           <button v-for="n in 9" :key="'m'+n"
             class="mjc-tile"
-            :class="{ active: handCount['m'+n] }"
-            @click="addTile('m'+n)">
-            <span v-html="tileSvg('m'+n, 38)"></span>
-            <span v-if="handCount['m'+n]" class="mjc-badge">{{ handCount['m'+n] }}</span>
+            :class="{ active: handCount[n+'m'] }"
+            @click="addTile(n+'m')">
+            <span v-html="tileSvg(n+'m', 38)"></span>
+            <span v-if="handCount[n+'m']" class="mjc-badge">{{ handCount[n+'m'] }}</span>
           </button>
         </div>
         <div class="mjc-row">
           <span class="mjc-label">筒</span>
           <button v-for="n in 9" :key="'p'+n"
             class="mjc-tile"
-            :class="{ active: handCount['p'+n] }"
-            @click="addTile('p'+n)">
-            <span v-html="tileSvg('p'+n, 38)"></span>
-            <span v-if="handCount['p'+n]" class="mjc-badge">{{ handCount['p'+n] }}</span>
+            :class="{ active: handCount[n+'p'] }"
+            @click="addTile(n+'p')">
+            <span v-html="tileSvg(n+'p', 38)"></span>
+            <span v-if="handCount[n+'p']" class="mjc-badge">{{ handCount[n+'p'] }}</span>
           </button>
         </div>
         <div class="mjc-row">
           <span class="mjc-label">条</span>
           <button v-for="n in 9" :key="'s'+n"
             class="mjc-tile"
-            :class="{ active: handCount['s'+n] }"
-            @click="addTile('s'+n)">
-            <span v-html="tileSvg('s'+n, 38)"></span>
-            <span v-if="handCount['s'+n]" class="mjc-badge">{{ handCount['s'+n] }}</span>
+            :class="{ active: handCount[n+'s'] }"
+            @click="addTile(n+'s')">
+            <span v-html="tileSvg(n+'s', 38)"></span>
+            <span v-if="handCount[n+'s']" class="mjc-badge">{{ handCount[n+'s'] }}</span>
           </button>
         </div>
         <div class="mjc-row">
