@@ -202,7 +202,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { wsService } from '../services/websocket'
+import { wsService } from '../services/socketio'
 import DiceRoller from '../components/DiceRoller.vue'
 import MahjongCalculator from '../components/MahjongCalculator.vue'
 import { getScoreDisplay } from '../utils/score-display'

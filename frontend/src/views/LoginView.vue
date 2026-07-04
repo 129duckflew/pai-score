@@ -26,7 +26,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { register } from '../services/api'
-import { wsService } from '../services/websocket'
+import { wsService } from '../services/socketio'
 
 const router = useRouter()
 const username = ref('')

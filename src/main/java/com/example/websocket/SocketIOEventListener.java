@@ -4,20 +4,25 @@ import com.corundumstudio.socketio.*;
 import com.corundumstudio.socketio.annotation.*;
 import com.example.entity.*;
 import com.example.service.*;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
+@ConditionalOnProperty(value = "socketio.enabled", havingValue = "true", matchIfMissing = true)
 public class SocketIOEventListener {
 
+    private final SocketIOServer server;
     private final UserService userService;
     private final RoomService roomService;
     private final GameService gameService;
 
-    public SocketIOEventListener(UserService userService,
+    public SocketIOEventListener(@Lazy SocketIOServer server, UserService userService,
                                   RoomService roomService, GameService gameService) {
+        this.server = server;
         this.userService = userService;
         this.roomService = roomService;
         this.gameService = gameService;
@@ -55,11 +60,32 @@ public class SocketIOEventListener {
     @OnDisconnect
     public void onDisconnect(SocketIOClient client) {
         Long userId = client.get("userId");
-        if (userId != null) {
-            client.getNamespace().getAllClients().forEach(c -> {
-                if (c.equals(client)) return;
-            });
-            client.leaveRoom(null);
+        if (userId == null) return;
+
+        User user = userService.findById(userId);
+        if (user == null || user.getActiveRoomCode() == null) return;
+
+        String roomCode = user.getActiveRoomCode();
+        try {
+            roomService.leaveRoom(userId, roomCode);
+        } catch (Exception ignored) {
+            // already left
+        }
+
+        user.setActiveRoomCode(null);
+        userService.updateUser(user);
+
+        Room room = roomService.findByCode(roomCode);
+        if (room == null) {
+            server.getRoomOperations(roomCode).sendEvent("ROOM_DESTROYED", Map.of(
+                "type", "ROOM_DESTROYED",
+                "roomCode", roomCode
+            ));
+        } else {
+            server.getRoomOperations(roomCode).sendEvent("PLAYER_LIST", Map.of(
+                "type", "PLAYER_LIST",
+                "players", buildPlayerList(room.getId(), null)
+            ));
         }
     }
 
@@ -115,13 +141,13 @@ public class SocketIOEventListener {
                 "players", buildPlayerList(room.getId(), userId)
             ));
 
-            client.getNamespace().getRoomOperations(roomCode).sendEvent("PLAYER_LIST", Map.of(
+            server.getRoomOperations(roomCode).sendEvent("PLAYER_LIST", Map.of(
                 "type", "PLAYER_LIST",
                 "players", buildPlayerList(room.getId(), null)
             ));
 
             User joinedUser = userService.findById(userId);
-            client.getNamespace().getRoomOperations(roomCode).sendEvent("PLAYER_JOINED", Map.of(
+            server.getRoomOperations(roomCode).sendEvent("PLAYER_JOINED", Map.of(
                 "type", "PLAYER_JOINED",
                 "userId", userId,
                 "username", joinedUser != null ? joinedUser.getUsername() : "?",
@@ -150,12 +176,12 @@ public class SocketIOEventListener {
 
             Room room = roomService.findByCode(roomCode);
             if (room == null) {
-                client.getNamespace().getRoomOperations(roomCode).sendEvent("ROOM_DESTROYED", Map.of(
+                server.getRoomOperations(roomCode).sendEvent("ROOM_DESTROYED", Map.of(
                     "type", "ROOM_DESTROYED",
                     "roomCode", roomCode
                 ));
             } else {
-                client.getNamespace().getRoomOperations(roomCode).sendEvent("PLAYER_LIST", Map.of(
+                server.getRoomOperations(roomCode).sendEvent("PLAYER_LIST", Map.of(
                     "type", "PLAYER_LIST",
                     "players", buildPlayerList(room.getId(), null)
                 ));
@@ -174,7 +200,7 @@ public class SocketIOEventListener {
             String roomCode = (String) msg.get("roomCode");
             Room room = gameService.startGame(userId, roomCode);
 
-            client.getNamespace().getRoomOperations(roomCode).sendEvent("GAME_STARTED", Map.of(
+            server.getRoomOperations(roomCode).sendEvent("GAME_STARTED", Map.of(
                 "type", "GAME_STARTED",
                 "players", buildPlayerList(room.getId(), null)
             ));
@@ -197,7 +223,7 @@ public class SocketIOEventListener {
             ScoreEntry entry = gameService.submitScore(userId, roomCode, targetPlayerId, score, note);
             Room room = roomService.findByCode(roomCode);
 
-            client.getNamespace().getRoomOperations(roomCode).sendEvent("SCORE_ADDED", Map.of(
+            server.getRoomOperations(roomCode).sendEvent("SCORE_ADDED", Map.of(
                 "type", "SCORE_ADDED",
                 "entry", entryToMap(entry),
                 "players", buildPlayerList(room.getId(), null)
@@ -228,7 +254,7 @@ public class SocketIOEventListener {
                 .map(this::entryToMap)
                 .collect(Collectors.toList());
 
-            client.getNamespace().getRoomOperations(roomCode).sendEvent("GAME_OVER", Map.of(
+            server.getRoomOperations(roomCode).sendEvent("GAME_OVER", Map.of(
                 "type", "GAME_OVER",
                 "players", buildPlayerList(room.getId(), null),
                 "entries", entriesData
@@ -276,7 +302,7 @@ public class SocketIOEventListener {
 
             User roller = userService.findById(userId);
 
-            client.getNamespace().getRoomOperations(roomCode).sendEvent("DICE_ROLL_RESULT", Map.of(
+            server.getRoomOperations(roomCode).sendEvent("DICE_ROLL_RESULT", Map.of(
                 "type", "DICE_ROLL_RESULT",
                 "entry", entryToMap(entry),
                 "roller", Map.of(

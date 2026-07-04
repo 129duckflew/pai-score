@@ -1,5 +1,7 @@
 import { io } from 'socket.io-client'
 
+const SOCKETIO_URL = import.meta.env.VITE_SOCKETIO_URL || ''
+
 class SocketIOService {
   constructor() {
     this.socket = null
@@ -14,9 +16,7 @@ class SocketIOService {
       this.socket.disconnect()
     }
 
-    const url = import.meta.env.VITE_SOCKETIO_URL || 'http://localhost:8089'
-
-    this.socket = io(url, {
+    this.socket = io(SOCKETIO_URL, {
       query: { token },
       reconnection: true,
       reconnectionDelay: 1000,
@@ -85,10 +85,7 @@ class SocketIOService {
       this.socket.disconnect()
       this.socket = null
     }
-  }
-
-  close() {
-    this.disconnect()
+    this.connected = false
   }
 }
 
