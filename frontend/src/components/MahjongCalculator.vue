@@ -110,6 +110,19 @@ const honors = {
 const handCount = reactive({})
 const tiles = ref([])
 
+const suitOrder = { s: 0, m: 1, p: 2, z: 3 }
+const honorOrder = { 1: 0, 2: 1, 3: 2, 4: 3, 7: 4, 6: 5, 5: 6 }
+
+function sortTiles() {
+  tiles.value.sort((a, b) => {
+    const sa = suitOrder[a[1]]
+    const sb = suitOrder[b[1]]
+    if (sa !== sb) return sa - sb
+    if (a[1] === 'z') return honorOrder[parseInt(a)] - honorOrder[parseInt(b)]
+    return parseInt(a) - parseInt(b)
+  })
+}
+
 const result = ref(null)
 const ukeire = ref(null)
 const totalUkeire = ref(0)
@@ -119,6 +132,7 @@ function addTile(code) {
   if (cur >= 4) return
   handCount[code] = cur + 1
   tiles.value.push(code)
+  sortTiles()
   result.value = null
   ukeire.value = null
 }
@@ -126,6 +140,7 @@ function addTile(code) {
 function removeTile(i) {
   const code = tiles.value[i]
   tiles.value.splice(i, 1)
+  sortTiles()
   const cur = handCount[code] - 1
   if (cur <= 0) delete handCount[code]
   else handCount[code] = cur
