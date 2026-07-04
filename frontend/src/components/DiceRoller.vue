@@ -198,4 +198,15 @@ onUnmounted(() => {
   color: #666;
   cursor: default;
 }
+
+@media (max-width: 600px) {
+  .dice-modal { min-width: unset; width: 85vw; padding: 24px 16px; }
+  .dice-title { font-size: 16px; margin-bottom: 18px; }
+  .die { width: 64px; height: 64px; border-radius: 12px; }
+  .die-face { width: 44px; height: 44px; gap: 3px; }
+  .dot.filled::after { width: 8px; height: 8px; }
+  .dice-area { gap: 12px; }
+  .dice-result { font-size: 18px; margin-top: 16px; }
+  .dice-result strong { font-size: 20px; }
+}
 </style>

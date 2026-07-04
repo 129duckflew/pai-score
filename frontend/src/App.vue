@@ -60,4 +60,14 @@ th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
 th { font-weight: 600; color: #666; font-size: 13px; }
 .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 12px; }
 .alert-error { background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; }
+
+@media (max-width: 600px) {
+  #app-container { padding: 12px; }
+  h2 { font-size: 16px; margin-bottom: 12px; }
+  th, td { padding: 8px; font-size: 12px; }
+  .text-lg { font-size: 16px; }
+  input, select { font-size: 16px; }
+  .card { padding: 14px; margin-bottom: 12px; }
+  button { padding: 8px 12px; font-size: 13px; }
+}
 </style>

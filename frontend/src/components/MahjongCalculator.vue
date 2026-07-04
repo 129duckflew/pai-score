@@ -374,4 +374,20 @@ function analyze() {
   cursor: pointer;
 }
 .mjc-btn-sec:hover { border-color: #999; color: #333; }
+
+@media (max-width: 600px) {
+  .mjc-modal { padding: 14px; max-width: 100vw; border-radius: 0; max-height: 100vh; }
+  .mjc-header { margin-bottom: 12px; }
+  .mjc-title { font-size: 16px; }
+  .mjc-suits { gap: 6px; margin-bottom: 10px; }
+  .mjc-row { gap: 2px; }
+  .mjc-label { width: 18px; font-size: 11px; }
+  .mjc-tile { width: 36px; height: 40px; border-radius: 4px; }
+  .mjc-tile.active { border-radius: 6px; }
+  .mjc-badge { top: -3px; right: -3px; min-width: 15px; height: 15px; font-size: 10px; padding: 0 3px; }
+  .mjc-hand-area { padding: 8px; }
+  .mjc-btn { padding: 10px; font-size: 14px; margin-bottom: 10px; }
+  .mjc-result { padding: 10px; font-size: 13px; margin-bottom: 10px; }
+  .mjc-btn-sec { font-size: 12px; padding: 6px 16px; }
+}
 </style>

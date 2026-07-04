@@ -56,4 +56,9 @@ async function handleRegister() {
 <style scoped>
 .login-page { display: flex; justify-content: center; padding-top: 80px; }
 .login-card { width: 380px; }
+
+@media (max-width: 600px) {
+  .login-page { padding: 32px 12px 0; }
+  .login-card { width: 100%; }
+}
 </style>

@@ -6,6 +6,7 @@
     </div>
 
     <div class="card" v-if="rooms.length">
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -30,6 +31,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
     <div class="card" v-else>
       <p class="text-center text-muted">暂无历史记录</p>
@@ -70,4 +72,11 @@ function formatTime(t) {
 .badge-waiting { background: #e6f7ff; color: #1890ff; }
 .badge-playing { background: #f6ffed; color: #52c41a; }
 .badge-finished { background: #f5f5f5; color: #999; }
+
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+@media (max-width: 600px) {
+  .header { flex-wrap: wrap; gap: 8px; }
+  .header h2 { font-size: 15px; }
+}
 </style>

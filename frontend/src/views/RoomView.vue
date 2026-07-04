@@ -78,6 +78,7 @@
     <!-- Score entries history -->
     <div class="card" v-if="entries.length">
       <h3 class="mb-12">记分记录</h3>
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -109,11 +110,13 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
 
     <!-- Game over summary -->
     <div v-if="isFinished" class="card">
       <h3 class="mb-12">最终排名</h3>
+      <div class="table-scroll">
       <table>
         <thead>
           <tr><th>排名</th><th>玩家</th><th>总分</th></tr>
@@ -126,6 +129,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
 
     <p v-if="error" class="alert alert-error">{{ error }}</p>
@@ -570,5 +574,25 @@ input[type="number"].full-width {
 
 .dice-row:hover {
   background: #fff7cc;
+}
+
+@media (max-width: 600px) {
+  .header { flex-wrap: wrap; gap: 8px; }
+  .header h2 { font-size: 15px; }
+  .player-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+  .player-card { padding: 12px 4px; }
+  .avatar { width: 48px; height: 48px; }
+  .avatar-emoji { font-size: 24px; }
+  .player-name { font-size: 12px; }
+  .player-score { font-size: 14px; }
+  .fab-container { bottom: 16px; right: 16px; }
+  .fab-btn { width: 48px; height: 48px; font-size: 20px; }
+  .modal { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; position: fixed; bottom: 0; left: 0; right: 0; padding: 20px 16px; }
+  .modal-header { margin-bottom: 12px; }
+  .modal-title { font-size: 16px; }
+  .modal-footer { flex-direction: column; gap: 8px; }
+  .modal-footer button { width: 100%; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -14px; padding: 0 14px; }
+  table { min-width: 500px; }
 }
 </style>

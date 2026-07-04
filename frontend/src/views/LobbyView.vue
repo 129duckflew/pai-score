@@ -144,4 +144,14 @@ function statusText(s) {
 .badge-waiting { background: #e6f7ff; color: #1890ff; }
 .badge-playing { background: #f6ffed; color: #52c41a; }
 .badge-finished { background: #f5f5f5; color: #999; }
+
+@media (max-width: 600px) {
+  .header { flex-wrap: wrap; gap: 6px; }
+  .header h2 { font-size: 15px; width: 100%; margin-bottom: 4px; }
+  .header .text-muted { font-size: 12px; }
+  .room-item { flex-wrap: wrap; gap: 6px; padding: 10px 0; }
+  .room-item .flex-1 { min-width: 140px; }
+  .room-item button { flex-shrink: 0; }
+  .flex.gap-8 { gap: 6px; }
+}
 </style>
