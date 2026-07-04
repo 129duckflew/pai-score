@@ -1,0 +1,120 @@
+<template>
+  <div class="lobby">
+    <div class="header flex items-center gap-12 mb-12">
+      <h2 class="flex-1">打牌记账</h2>
+      <span class="text-muted">{{ username }}</span>
+      <button class="btn-secondary" @click="$router.push('/history')">历史</button>
+      <button class="btn-secondary" @click="handleLogout">退出</button>
+    </div>
+
+    <div class="card">
+      <h3>创建房间</h3>
+      <button class="btn-success mt-12" @click="createRoom" :disabled="creating">
+        {{ creating ? '创建中...' : '创建新房间' }}
+      </button>
+    </div>
+
+    <div class="card">
+      <h3>加入房间</h3>
+      <form @submit.prevent="joinRoom" class="flex gap-8 mt-12">
+        <input
+          v-model="roomCode"
+          placeholder="输入6位邀请码"
+          class="flex-1"
+          maxlength="6"
+          style="text-transform: uppercase;"
+        />
+        <button type="submit" class="btn-primary" :disabled="!roomCode.trim()">加入</button>
+      </form>
+    </div>
+
+    <div class="card" v-if="rooms.length">
+      <h3>历史房间</h3>
+      <div v-for="r in rooms" :key="r.roomCode" class="room-item flex items-center gap-8 mt-12">
+        <span class="flex-1">
+          {{ r.roomCode }}
+          <span :class="'badge badge-' + r.status.toLowerCase()">{{ statusText(r.status) }}</span>
+        </span>
+        <span class="text-muted">{{ r.playerCount }}人</span>
+        <button class="btn-secondary" @click="$router.push('/room/' + r.roomCode)">进入</button>
+      </div>
+    </div>
+
+    <p v-if="error" class="alert alert-error">{{ error }}</p>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { wsService } from '../services/websocket'
+import { getUserHistory } from '../services/api'
+
+const router = useRouter()
+const username = ref(localStorage.getItem('username') || '')
+const roomCode = ref('')
+const creating = ref(false)
+const error = ref('')
+const rooms = ref([])
+let unsubs = []
+
+onMounted(() => {
+  loadHistory()
+  unsubs.push(wsService.on('ROOM_CREATED', (msg) => {
+    router.push('/room/' + msg.roomCode)
+  }))
+  unsubs.push(wsService.on('ROOM_JOINED', (msg) => {
+    router.push('/room/' + msg.roomCode)
+  }))
+  unsubs.push(wsService.on('ERROR', (msg) => {
+    error.value = msg.message
+  }))
+})
+
+onUnmounted(() => {
+  unsubs.forEach(fn => fn())
+})
+
+async function loadHistory() {
+  try {
+    const uid = localStorage.getItem('userId')
+    if (uid) {
+      rooms.value = await getUserHistory(uid)
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+function createRoom() {
+  creating.value = true
+  error.value = ''
+  wsService.send('CREATE_ROOM')
+  setTimeout(() => { creating.value = false }, 2000)
+}
+
+function joinRoom() {
+  if (!roomCode.value.trim()) return
+  error.value = ''
+  wsService.send('JOIN_ROOM', { roomCode: roomCode.value.trim().toUpperCase() })
+}
+
+function handleLogout() {
+  wsService.disconnect()
+  localStorage.clear()
+  router.push('/login')
+}
+
+function statusText(s) {
+  return s === 'WAITING' ? '等待中' : s === 'PLAYING' ? '进行中' : '已结束'
+}
+</script>
+
+<style scoped>
+.items-center { align-items: center; }
+.room-item { padding: 8px 0; }
+.badge { font-size: 12px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
+.badge-waiting { background: #e6f7ff; color: #1890ff; }
+.badge-playing { background: #f6ffed; color: #52c41a; }
+.badge-finished { background: #f5f5f5; color: #999; }
+</style>
