@@ -467,6 +467,10 @@ function formatTime(t) {
 
 .avatar.clickable {
   cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .avatar.clickable:hover {
