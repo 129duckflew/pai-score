@@ -4,6 +4,14 @@
 
 一个基于 Socket.IO 实时通信的打牌记账工具，支持多人在线记分、房间管理、自由记分、断线重连。
 
+## 近期更新摘要
+
+- **超级管理员 Portal** — 新增 `/admin` 控制台，支持管理员密码登录、用户 CRUD/token 查看、在线状态、房间分页搜索、房间日志、强制关闭全部活跃房间、运行指标和 Spring Boot 最近日志查看。
+- **Tailwind 前端重设计** — 登录、Lobby、房间、历史记录等页面统一升级为 Vue 3 + Tailwind 的移动端友好界面。
+- **友好房间名** — 房间默认显示为创建者相关名称，历史记录、Lobby 和房间详情统一展示可读房间名。
+- **解散房间历史保留** — 房主退出/解散房间后保留历史记录，用户仍可查看已解散房间的完整明细。
+- **认证与移动端体验修复** — Socket token 失效会自动跳回登录页，并修复头像双击触发页面缩放的问题。
+
 ## 技术栈
 
 | 层 | 技术 |
@@ -62,6 +70,7 @@ The project is deployed on [Railway](https://railway.app) using Infrastructure-a
   - `SOCKETIO_PORT`（默认 8089）— Socket.IO 实时通信（netty-socketio）
 - **Profile:** `SPRING_PROFILES_ACTIVE=railway` switches from H2 to PostgreSQL
 - **Database:** Connects via Railway-injected env vars (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`)
+- **Admin Secret:** `ADMIN_PASSWORD` is injected as a Railway/GitHub Secret and is used by `/admin`
 
 ### 3. Frontend (nginx + Vue 3 SPA)
 - **Source:** GitHub, root directory `frontend/`
@@ -85,7 +94,7 @@ The project is deployed on [Railway](https://railway.app) using Infrastructure-a
 The deployment is defined in `.railway/railway.ts` using the `railway/iac` module:
 ```ts
 // Key resources: Postgres database, Backend service, Frontend service
-// Backend env: SPRING_PROFILES_ACTIVE, PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE
+// Backend env: SPRING_PROFILES_ACTIVE, PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE, ADMIN_PASSWORD
 // Frontend env: BACKEND_HOST (from backend.env.RAILWAY_PRIVATE_DOMAIN), BACKEND_PORT
 ```
 
@@ -102,9 +111,11 @@ railway config apply         # Apply changes
 
 - **免密注册** — 输入用户名即可，服务端生成 UUID token + 随机 Emoji 头像持久化身份
 - **房间管理** — 创建房间（生成 6 位邀请码）/ 输入邀请码加入 / 离开
+- **友好房间名** — 自动生成可读房间名称，列表和历史记录统一展示
 - **自由记分** — 点击其他玩家头像弹框记分，支持备注，每笔记录带时间戳
 - **断线重连** — token 存 localStorage，WebSocket 指数退避自动重连，恢复房间状态
-- **历史记录** — 查看参与过的所有房间（进行中/已结束）和完整记分明细
+- **历史记录** — 查看参与过的所有房间（进行中/已结束/已解散）和完整记分明细
+- **超级管理员** — `/admin` 管理用户、房间、日志和运行状态，密码通过 `ADMIN_PASSWORD` Secret 注入
 - **最多 8 人** — 每间房上限 8 名玩家
 - **禁止自记分** — 不能对自己转分
 
@@ -137,7 +148,7 @@ docker compose up -d
 | 实体 | 关键字段 | 说明 |
 |------|---------|------|
 | `User` | id, username (unique), token (UUID), activeRoomCode | 用户身份 |
-| `Room` | id, roomCode (6位), hostId, status (WAITING/PLAYING/FINISHED) | 牌局房间 |
+| `Room` | id, roomCode (6位), hostId, name, status (WAITING/PLAYING/FINISHED/DISBANDED) | 牌局房间 |
 | `RoomPlayer` | id, roomId, userId, totalScore | 玩家-房间关联 |
 | `ScoreEntry` | id, roomId, targetPlayerId, score, note, createdAt | 自由记分条目（带时间戳） |
 
@@ -148,6 +159,14 @@ docker compose up -d
 | POST | `/api/users/register` | 注册/登录 `{"username":"xxx"}` → 返回 userId + token |
 | GET | `/api/users/{userId}/history` | 用户参与过的房间列表 |
 | GET | `/api/rooms/{roomCode}/history` | 房间完整牌局记录（轮次+记分+排名） |
+| POST | `/api/admin/login` | 超级管理员登录，密码来自 `ADMIN_PASSWORD` |
+| GET | `/api/admin/users` | 分页查看用户、在线状态和 token |
+| POST/PUT/DELETE | `/api/admin/users` / `/api/admin/users/{id}` | 管理用户 |
+| GET | `/api/admin/rooms` | 分页搜索所有房间，支持状态筛选 |
+| GET | `/api/admin/rooms/{roomCode}/history` | 管理端查看房间日志记录 |
+| POST | `/api/admin/rooms/close-all` | 强制关闭所有等待中/进行中的房间 |
+| GET | `/api/admin/runtime` | 查看 CPU、内存、线程、在线用户等运行状态 |
+| GET | `/api/admin/logs` | 查看 Spring Boot 最近运行日志 |
 
 ## Socket.IO 消息协议
 
@@ -189,9 +208,10 @@ pai-score/
 ├── pom.xml                             # Maven 依赖
 ├── src/main/java/com/example/
 │   ├── HelloApplication.java
+│   ├── config/                         # 管理端日志缓冲 appender
 │   ├── entity/                         # JPA 实体
 │   ├── repository/                     # 数据访问层
-│   ├── service/                        # 业务逻辑（RoomService, GameService, UserService）
+│   ├── service/                        # 业务逻辑（RoomService, GameService, UserService, AdminAuthService）
 │   ├── websocket/                      # Socket.IO 处理
 │   │   ├── SocketIOConfig.java         # Socket.IO 服务器 Bean（认证 + 端口配置）
 │   │   └── SocketIOEventListener.java  # 事件处理器（@OnConnect/Disconnect/Event）
@@ -208,8 +228,10 @@ pai-score/
         │   ├── LoginView.vue           # 注册/登录
         │   ├── LobbyView.vue           # 创建/加入房间
         │   ├── RoomView.vue            # 记分面板
-        │   └── HistoryView.vue         # 历史记录
+        │   ├── HistoryView.vue         # 历史记录
+        │   └── AdminView.vue           # 超级管理员 Portal
         └── services/
             ├── api.js                  # REST 调用
+            ├── admin-api.js            # 管理端 REST 调用
             └── socketio.js             # Socket.IO 客户端 + 自动重连
 ```
