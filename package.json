@@ -1,0 +1,6 @@
+{
+  "type": "module",
+  "devDependencies": {
+    "railway": "^3.4.1"
+  }
+}

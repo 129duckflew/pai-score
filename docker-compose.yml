@@ -6,8 +6,10 @@ services:
     container_name: cardgame-backend
     ports:
       - "8082:8081"
+      - "8089:8089"
     environment:
-      - SERVER_PORT=8081
+      - PORT=8081
+      - SOCKETIO_PORT=8089
       - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/cardgame;AUTO_SERVER=TRUE
     volumes:
       - h2-data:/data
@@ -21,6 +23,10 @@ services:
     container_name: cardgame-frontend
     ports:
       - "8083:80"
+    environment:
+      - BACKEND_HOST=backend
+      - BACKEND_PORT=8081
+      - SOCKETIO_PORT=8089
     depends_on:
       - backend
     restart: unless-stopped
