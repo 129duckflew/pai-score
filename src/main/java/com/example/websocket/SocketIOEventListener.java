@@ -93,6 +93,7 @@ public class SocketIOEventListener {
             client.sendEvent("ROOM_CREATED", Map.of(
                 "type", "ROOM_CREATED",
                 "roomCode", room.getRoomCode(),
+                "roomName", roomDisplayName(room),
                 "players", buildPlayerList(room.getId(), userId)
             ));
         } catch (Exception e) {
@@ -127,6 +128,7 @@ public class SocketIOEventListener {
             client.sendEvent("ROOM_JOINED", Map.of(
                 "type", "ROOM_JOINED",
                 "roomCode", roomCode,
+                "roomName", roomDisplayName(room),
                 "players", buildPlayerList(room.getId(), userId)
             ));
 
@@ -321,6 +323,7 @@ public class SocketIOEventListener {
         client.sendEvent("ROOM_STATE", Map.of(
             "type", "ROOM_STATE",
             "roomCode", room.getRoomCode(),
+            "roomName", roomDisplayName(room),
             "status", room.getStatus(),
             "hostId", room.getHostId(),
             "players", buildPlayerList(room.getId(), null),
@@ -348,6 +351,10 @@ public class SocketIOEventListener {
 
     private boolean isActiveRoom(Room room) {
         return "WAITING".equals(room.getStatus()) || "PLAYING".equals(room.getStatus());
+    }
+
+    private String roomDisplayName(Room room) {
+        return room.getName() != null && !room.getName().isBlank() ? room.getName() : "房间 " + room.getRoomCode();
     }
 
     private void markOnline(String roomCode, Long userId) {

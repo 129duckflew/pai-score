@@ -10,7 +10,7 @@
       <table>
         <thead>
           <tr>
-            <th>房间码</th>
+            <th>房间</th>
             <th>状态</th>
             <th>人数</th>
             <th>时间</th>
@@ -19,7 +19,10 @@
         </thead>
         <tbody>
           <tr v-for="r in rooms" :key="r.roomCode">
-            <td><strong>{{ r.roomCode }}</strong></td>
+            <td>
+              <strong>{{ roomDisplayName(r) }}</strong>
+              <span class="room-code text-muted">邀请码: {{ r.roomCode }}</span>
+            </td>
             <td>
               <span :class="'badge badge-' + r.status.toLowerCase()">{{ statusText(r.status) }}</span>
             </td>
@@ -60,6 +63,10 @@ function statusText(s) {
   return s === 'WAITING' ? '等待中' : s === 'PLAYING' ? '进行中' : s === 'DISBANDED' ? '已解散' : '已结束'
 }
 
+function roomDisplayName(room) {
+  return room.name || room.roomName || room.roomCode
+}
+
 function formatTime(t) {
   if (!t) return ''
   return t.substring(0, 16).replace('T', ' ')
@@ -73,6 +80,7 @@ function formatTime(t) {
 .badge-playing { background: #f6ffed; color: #52c41a; }
 .badge-finished { background: #f5f5f5; color: #999; }
 .badge-disbanded { background: #f5f5f5; color: #666; }
+.room-code { display: block; font-size: 12px; margin-top: 2px; }
 
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 

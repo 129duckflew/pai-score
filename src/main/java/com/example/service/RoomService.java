@@ -34,7 +34,7 @@ public class RoomService {
         Room room = new Room();
         room.setRoomCode(generateRoomCode());
         room.setHostId(hostUserId);
-        room.setName(hostUser.getUsername() + "创建的房间");
+        room.setName(hostUser.getUsername() + "的房间");
         room.setStatus("WAITING");
         room.setCreatedAt(LocalDateTime.now());
         room = roomRepository.save(room);

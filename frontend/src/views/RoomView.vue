@@ -2,7 +2,7 @@
   <div class="room">
     <div class="header flex items-center gap-12 mb-12">
       <button class="btn-secondary" @click="goBack">← 返回</button>
-      <h2 class="flex-1">房间 {{ roomCode }}</h2>
+      <h2 class="flex-1">{{ roomDisplayName }}</h2>
       <span class="socket-dot" :class="{ online: socketConnected }" :title="socketConnected ? 'Socket 已连接' : 'Socket 未连接'"></span>
       <span v-if="roomState" :class="'badge badge-' + roomState.status.toLowerCase()">
         {{ statusText(roomState.status) }}
@@ -225,6 +225,7 @@ const isHost = computed(() => roomState.value?.hostId === myUserId.value)
 const isWaiting = computed(() => roomState.value?.status === 'WAITING')
 const isActive = computed(() => roomState.value?.status === 'PLAYING')
 const isFinished = computed(() => roomState.value?.status === 'FINISHED')
+const roomDisplayName = computed(() => roomState.value?.roomName || roomState.value?.name || `房间 ${roomCode}`)
 
 // Modal state
 const showModal = ref(false)

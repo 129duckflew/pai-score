@@ -32,9 +32,10 @@
     <div class="card" v-if="activeRooms.length">
       <h3>可加入的房间</h3>
       <div v-for="r in activeRooms" :key="'a-'+r.roomCode" class="room-item flex items-center gap-8 mt-12">
-        <span class="flex-1">
-          {{ r.roomCode }}
+        <span class="flex-1 room-title-block">
+          <strong>{{ roomDisplayName(r) }}</strong>
           <span class="badge badge-waiting">等待中</span>
+          <span class="room-code text-muted">邀请码: {{ r.roomCode }}</span>
         </span>
         <span class="text-muted">{{ r.playerCount }}人</span>
         <button class="btn-primary" @click="joinRoomByCode(r.roomCode)">加入</button>
@@ -44,9 +45,10 @@
     <div class="card" v-if="rooms.length">
       <h3>我的房间</h3>
       <div v-for="r in rooms" :key="r.roomCode" class="room-item flex items-center gap-8 mt-12">
-        <span class="flex-1">
-          {{ r.roomCode }}
+        <span class="flex-1 room-title-block">
+          <strong>{{ roomDisplayName(r) }}</strong>
           <span :class="'badge badge-' + r.status.toLowerCase()">{{ statusText(r.status) }}</span>
+          <span class="room-code text-muted">邀请码: {{ r.roomCode }}</span>
         </span>
         <span class="text-muted">{{ r.playerCount }}人</span>
         <button class="btn-secondary" @click="$router.push('/room/' + r.roomCode)">进入</button>
@@ -147,11 +149,17 @@ function handleLogout() {
 function statusText(s) {
   return s === 'WAITING' ? '等待中' : s === 'PLAYING' ? '进行中' : s === 'DISBANDED' ? '已解散' : '已结束'
 }
+
+function roomDisplayName(room) {
+  return room.name || room.roomName || room.roomCode
+}
 </script>
 
 <style scoped>
 .items-center { align-items: center; }
 .room-item { padding: 8px 0; }
+.room-title-block { display: block; min-width: 0; }
+.room-code { display: block; font-size: 12px; margin-top: 2px; }
 .socket-dot { width: 10px; height: 10px; border-radius: 50%; background: #bfbfbf; flex: 0 0 auto; }
 .socket-dot.online { background: #52c41a; box-shadow: 0 0 0 3px rgba(82,196,26,.14); }
 .badge { font-size: 12px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }

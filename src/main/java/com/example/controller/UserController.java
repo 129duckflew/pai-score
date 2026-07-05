@@ -45,7 +45,7 @@ public class UserController {
         List<RoomSummary> summaries = rooms.stream()
             .map(r -> {
                 long count = roomService.getPlayers(r.getId()).size();
-                return new RoomSummary(r.getRoomCode(), r.getStatus(),
+                return new RoomSummary(r.getRoomCode(), r.getName(), r.getStatus(),
                     (int) count, r.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
             })
             .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
@@ -61,6 +61,7 @@ public class UserController {
 
         RoomHistoryResponse res = new RoomHistoryResponse();
         res.setRoomCode(room.getRoomCode());
+        res.setName(room.getName());
         res.setStatus(room.getStatus());
 
         List<RoomPlayer> players = roomService.getPlayers(room.getId());

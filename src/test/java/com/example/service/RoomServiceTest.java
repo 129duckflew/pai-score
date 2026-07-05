@@ -26,6 +26,15 @@ class RoomServiceTest {
     private UserService userService;
 
     @Test
+    void createRoomNamesRoomAfterHost() {
+        User host = userService.register("Alice");
+
+        Room room = roomService.createRoom(host.getId());
+
+        assertThat(room.getName()).isEqualTo("Alice的房间");
+    }
+
+    @Test
     void getUserRooms_onlyReturnsRoomsJoinedByThatUser() {
         User u1 = userService.register("Alice");
         User u2 = userService.register("Bob");
