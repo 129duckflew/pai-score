@@ -95,18 +95,19 @@ onUnmounted(() => {
 }
 
 .dice-modal {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: linear-gradient(135deg, #09110f 0%, #0b3b2e 100%);
+  border: 1px solid rgba(243, 201, 105, 0.24);
   border-radius: 20px;
   padding: 32px 40px;
   text-align: center;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48), 0 0 34px rgba(243, 201, 105, 0.14);
   min-width: 320px;
 }
 
 .dice-title {
   font-size: 18px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: #f6fff9;
   margin-bottom: 24px;
 }
 
@@ -177,14 +178,14 @@ onUnmounted(() => {
 
 .die-plus {
   font-size: 28px;
-  color: #888;
+  color: rgba(243, 201, 105, 0.72);
   font-weight: 300;
 }
 
 .dice-result {
   margin-top: 20px;
   font-size: 20px;
-  color: #ffd700;
+  color: #f3c969;
   font-weight: 500;
 }
 
@@ -195,7 +196,7 @@ onUnmounted(() => {
 .dice-hint {
   margin-top: 12px;
   font-size: 13px;
-  color: #666;
+  color: rgba(209, 250, 229, 0.48);
   cursor: default;
 }
 

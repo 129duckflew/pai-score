@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    min-height: 100%;
+    background: #09110f;
+  }
+
+  body {
+    min-height: 100%;
+    margin: 0;
+    color: #eef8f2;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background:
+      radial-gradient(circle at 16% 12%, rgba(53, 211, 153, 0.18), transparent 32rem),
+      radial-gradient(circle at 88% 8%, rgba(243, 201, 105, 0.16), transparent 28rem),
+      linear-gradient(135deg, #09110f 0%, #0d1f1b 42%, #0b3b2e 100%);
+  }
+
+  button {
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.52;
+  }
+
+  input,
+  select {
+    @apply rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-white outline-none transition placeholder:text-emerald-100/35 focus:border-gold/70 focus:ring-2 focus:ring-gold/20;
+  }
+
+  table {
+    @apply w-full border-collapse text-sm;
+  }
+
+  th {
+    @apply border-b border-white/10 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-emerald-100/55;
+  }
+
+  td {
+    @apply border-b border-white/10 px-4 py-3 text-left text-emerald-50/85;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply mx-auto min-h-screen w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6;
+  }
+
+  .panel {
+    @apply rounded-2xl border border-white/10 bg-white/[0.075] p-4 shadow-glow backdrop-blur-xl sm:p-5;
+  }
+
+  .panel-strong {
+    @apply rounded-2xl border border-gold/25 bg-gradient-to-br from-white/[0.14] to-white/[0.055] p-5 shadow-gold backdrop-blur-xl;
+  }
+
+  .btn {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-emerald-50 hover:-translate-y-0.5 disabled:hover:translate-y-0;
+  }
+
+  .btn-primary {
+    @apply btn border-gold/50 bg-gold text-ink shadow-gold hover:bg-amber-200;
+  }
+
+  .btn-secondary {
+    @apply btn bg-white/10 hover:border-white/25 hover:bg-white/15;
+  }
+
+  .btn-success {
+    @apply btn border-jade/40 bg-jade text-ink hover:bg-emerald-300;
+  }
+
+  .btn-danger,
+  .btn-danger-outline {
+    @apply btn border-ember/50 bg-ember/20 text-orange-100 hover:bg-ember/30;
+  }
+
+  .btn-warning {
+    @apply btn border-gold/50 bg-gold/20 text-amber-100 hover:bg-gold/30;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold;
+  }
+
+  .badge-waiting {
+    @apply border-sky-300/40 bg-sky-300/15 text-sky-100;
+  }
+
+  .badge-playing {
+    @apply border-jade/40 bg-jade/15 text-emerald-100;
+  }
+
+  .badge-finished,
+  .badge-disbanded {
+    @apply border-white/15 bg-white/10 text-emerald-100/60;
+  }
+
+  .alert {
+    @apply rounded-xl border px-4 py-3 text-sm;
+  }
+
+  .alert-error {
+    @apply border-ember/40 bg-ember/15 text-orange-100;
+  }
+
+  .text-muted {
+    @apply text-sm text-emerald-100/55;
+  }
+
+  .table-scroll {
+    @apply overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .score-pos {
+    @apply font-bold text-jade;
+  }
+
+  .score-neg {
+    @apply font-bold text-ember;
+  }
+}
