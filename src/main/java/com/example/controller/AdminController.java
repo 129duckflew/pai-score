@@ -228,6 +228,7 @@ public class AdminController {
         data.put("name", room.getName());
         data.put("status", room.getStatus());
         data.put("hostId", room.getHostId());
+        data.put("feeAmount", room.getFeeAmount() != null ? room.getFeeAmount() : 0);
         data.put("playerCount", roomService.getPlayers(room.getId()).size());
         data.put("createdAt", room.getCreatedAt() != null ? room.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null);
         return data;
@@ -238,6 +239,7 @@ public class AdminController {
         res.setRoomCode(room.getRoomCode());
         res.setName(room.getName());
         res.setStatus(room.getStatus());
+        res.setFeeAmount(room.getFeeAmount() != null ? room.getFeeAmount() : 0);
 
         List<RoomPlayer> players = roomService.getPlayers(room.getId());
         List<RoomHistoryResponse.PlayerInfo> playerInfos = players.stream().map(p -> {
@@ -262,6 +264,10 @@ public class AdminController {
             ei.setType(e.getType());
             ei.setNote(e.getNote());
             ei.setCreatedAt(e.getCreatedAt() != null ? e.getCreatedAt().toString() : null);
+            ei.setReverted(Boolean.TRUE.equals(e.getReverted()));
+            ei.setRevertedAt(e.getRevertedAt() != null ? e.getRevertedAt().toString() : null);
+            ei.setRevertedByUserId(e.getRevertedByUserId());
+            ei.setRevertOfEntryId(e.getRevertOfEntryId());
             RoomPlayer source = players.stream().filter(p -> p.getId().equals(e.getSourcePlayerId())).findFirst().orElse(null);
             ei.setSourcePlayerName(source != null ? playerInfos.stream()
                 .filter(pi -> pi.getPlayerId().equals(source.getId()))
@@ -275,6 +281,17 @@ public class AdminController {
             return ei;
         }).collect(Collectors.toList());
         res.setEntries(entryInfos);
+        res.setSettlementTransfers(gameService.getSettlementTransfers(room.getId()).stream().map(t -> {
+            RoomHistoryResponse.SettlementTransferInfo ti = new RoomHistoryResponse.SettlementTransferInfo();
+            ti.setFromPlayerId(t.getFromPlayerId());
+            ti.setToPlayerId(t.getToPlayerId());
+            ti.setAmount(t.getAmount());
+            ti.setFromPlayerName(playerInfos.stream().filter(p -> p.getPlayerId().equals(t.getFromPlayerId()))
+                .findFirst().map(RoomHistoryResponse.PlayerInfo::getUsername).orElse("?"));
+            ti.setToPlayerName(playerInfos.stream().filter(p -> p.getPlayerId().equals(t.getToPlayerId()))
+                .findFirst().map(RoomHistoryResponse.PlayerInfo::getUsername).orElse("?"));
+            return ti;
+        }).collect(Collectors.toList()));
         return res;
     }
 

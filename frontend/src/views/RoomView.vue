@@ -76,6 +76,20 @@
       <p class="text-muted">点击其他玩家的头像为其记分</p>
     </div>
 
+    <!-- Room fee -->
+    <div class="panel">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div class="flex-1">
+          <p class="text-sm font-semibold text-gold">房费 AA</p>
+          <p class="mt-1 text-sm text-emerald-100/60">当前房费 {{ feeAmount }}，结束后按人数平摊并计入转账方案</p>
+        </div>
+        <div v-if="isHost && !isFinished" class="flex gap-2">
+          <input v-model.number="feeInput" type="number" min="0" inputmode="numeric" class="min-h-10 w-32" />
+          <button class="btn-primary" @click="setRoomFee">更新房费</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Host controls during play -->
     <div class="panel" v-if="isActive && isHost">
       <div class="flex gap-3">
@@ -106,23 +120,18 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="e in sortedEntries" :key="e.id" :class="e.type === 'DICE_ROLL' ? 'dice-row' : ''">
+          <tr v-for="e in sortedEntries" :key="e.id" :class="{ 'dice-row': e.type === 'DICE_ROLL', 'reverted-row': e.reverted }">
             <td class="text-muted">{{ formatTime(e.createdAt) }}</td>
             <td>
-              <template v-if="e.type === 'DICE_ROLL'">{{ playerName(e.targetPlayerId) }} 🎲</template>
-              <template v-else>{{ e._display.operationText }}</template>
+              {{ entryOperationText(e) }}
+              <span v-if="e.reverted" class="ml-2 text-xs text-emerald-100/45">已撤回</span>
             </td>
             <td>
-              <template v-if="e.type === 'DICE_ROLL'">🎲 {{ e.score }}</template>
-              <template v-else>
-                <span :class="e._display.cssClass">
-                  {{ e._display.displayScore }}
-                </span>
-              </template>
+              <span :class="entryScoreClass(e)">{{ entryScoreText(e) }}</span>
             </td>
             <td class="text-muted">
-              <template v-if="e.type === 'DICE_ROLL'">{{ e.note || '-' }}</template>
-              <template v-else>{{ e.note || '-' }}</template>
+              <span>{{ e.note || '-' }}</span>
+              <button v-if="canRevert(e)" class="btn-secondary ml-2" @click="revertScore(e.id)">撤回</button>
             </td>
           </tr>
         </tbody>
@@ -147,6 +156,19 @@
         </tbody>
       </table>
       </div>
+    </div>
+
+    <div v-if="isFinished" class="panel-strong">
+      <h3 class="mb-4 text-xl font-black text-white">最小转账方案</h3>
+      <div v-if="settlementTransfers.length" class="space-y-3">
+        <div v-for="(t, i) in settlementTransfers" :key="i" class="transfer-row">
+          <span>{{ t.fromPlayerName }}</span>
+          <span class="text-emerald-100/45">转给</span>
+          <span>{{ t.toPlayerName }}</span>
+          <strong class="text-gold">{{ t.amount }}</strong>
+        </div>
+      </div>
+      <p v-else class="text-muted">无需转账</p>
     </div>
 
     <p v-if="error" class="alert alert-error">{{ error }}</p>
@@ -221,6 +243,7 @@ const roomCode = route.params.roomCode
 const roomState = ref(null)
 const players = ref([])
 const entries = ref([])
+const settlementTransfers = ref([])
 const error = ref('')
 const leavingRef = ref(false)
 const socketConnected = ref(wsService.connected)
@@ -231,6 +254,8 @@ const isWaiting = computed(() => roomState.value?.status === 'WAITING')
 const isActive = computed(() => roomState.value?.status === 'PLAYING')
 const isFinished = computed(() => roomState.value?.status === 'FINISHED')
 const roomDisplayName = computed(() => roomState.value?.roomName || roomState.value?.name || `房间 ${roomCode}`)
+const feeAmount = computed(() => roomState.value?.feeAmount || 0)
+const feeInput = ref(0)
 
 // Modal state
 const showModal = ref(false)
@@ -276,6 +301,8 @@ onMounted(() => {
   unsubs.push(wsService.on('PLAYER_LIST', handlePlayerList))
   unsubs.push(wsService.on('GAME_STARTED', handleGameStarted))
   unsubs.push(wsService.on('SCORE_ADDED', handleScoreAdded))
+  unsubs.push(wsService.on('SCORE_REVERTED', handleScoreReverted))
+  unsubs.push(wsService.on('ROOM_FEE_UPDATED', handleRoomFeeUpdated))
   unsubs.push(wsService.on('GAME_OVER', handleGameOver))
   unsubs.push(wsService.on('DICE_ROLL_RESULT', handleDiceRollResult))
   unsubs.push(wsService.on('ROOM_DESTROYED', handleRoomDestroyed))
@@ -303,6 +330,8 @@ function handleRoomState(msg) {
   roomState.value = msg
   players.value = msg.players || []
   entries.value = msg.entries || []
+  settlementTransfers.value = msg.settlementTransfers || []
+  feeInput.value = msg.feeAmount || 0
 }
 
 function handlePlayerList(msg) {
@@ -322,10 +351,23 @@ function handleScoreAdded(msg) {
   players.value = msg.players || []
 }
 
+function handleScoreReverted(msg) {
+  entries.value = msg.entries || entries.value
+  players.value = msg.players || []
+}
+
+function handleRoomFeeUpdated(msg) {
+  roomState.value = { ...roomState.value, feeAmount: msg.feeAmount || 0 }
+  feeInput.value = msg.feeAmount || 0
+  entries.value.push(msg.entry)
+  players.value = msg.players || []
+}
+
 function handleGameOver(msg) {
   roomState.value = { ...roomState.value, status: 'FINISHED' }
   players.value = msg.players || []
   entries.value = msg.entries || []
+  settlementTransfers.value = msg.settlementTransfers || []
 }
 
 function handleRoomDestroyed(msg) {
@@ -346,6 +388,14 @@ function handleDiceRollResult(msg) {
 function rollDice() {
   wsService.send('ROLL_DICE', { roomCode })
   fabOpen.value = false
+}
+
+function setRoomFee() {
+  wsService.send('SET_ROOM_FEE', { roomCode, feeAmount: Math.max(0, Number(feeInput.value) || 0) })
+}
+
+function revertScore(entryId) {
+  wsService.send('REVERT_SCORE', { roomCode, entryId })
 }
 
 function openScoreModal(player) {
@@ -410,6 +460,32 @@ function confirmDestroyRoom() {
 function playerName(playerId) {
   const p = players.value.find(p => p.playerId === playerId)
   return p ? p.username : '?'
+}
+
+function entryOperationText(entry) {
+  if (entry.type === 'DICE_ROLL') return `${playerName(entry.targetPlayerId)} 🎲`
+  if (entry.type === 'ROOM_FEE') return '房费设置'
+  if (entry.type === 'SCORE_REVERT') return `撤回 #${entry.revertOfEntryId}`
+  return entry._display?.operationText || '-'
+}
+
+function entryScoreText(entry) {
+  if (entry.type === 'DICE_ROLL') return `🎲 ${entry.score}`
+  if (entry.type === 'ROOM_FEE') return `${entry.score}`
+  if (entry.type === 'SCORE_REVERT') return `撤回 ${entry.score}`
+  return entry._display?.displayScore || String(entry.score || 0)
+}
+
+function entryScoreClass(entry) {
+  if (entry.reverted) return 'text-emerald-100/45'
+  if (entry.type !== 'SCORE') return 'text-gold'
+  return entry._display?.cssClass || ''
+}
+
+function canRevert(entry) {
+  if (!isActive.value || entry.type !== 'SCORE' || entry.reverted) return false
+  if (entry.addedByUserId !== myUserId.value) return false
+  return Date.now() - new Date(entry.createdAt).getTime() <= 60 * 1000
 }
 
 function statusText(s) {
@@ -668,6 +744,21 @@ input[type="number"].full-width {
 
 .dice-row:hover {
   background: rgba(243, 201, 105, 0.14);
+}
+
+.reverted-row {
+  opacity: 0.68;
+}
+
+.transfer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
+  background: rgba(255,255,255,.06);
+  padding: 12px 14px;
 }
 
 @media (max-width: 600px) {

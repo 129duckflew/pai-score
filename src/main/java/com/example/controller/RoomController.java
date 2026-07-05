@@ -29,7 +29,8 @@ public class RoomController {
             .map(r -> {
                 long count = roomService.getPlayers(r.getId()).size();
                 return new RoomSummary(r.getRoomCode(), r.getName(), r.getStatus(),
-                    (int) count, r.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                    (int) count, r.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                    r.getFeeAmount() != null ? r.getFeeAmount() : 0);
             })
             .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
             .collect(Collectors.toList());

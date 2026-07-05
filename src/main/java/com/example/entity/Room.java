@@ -22,6 +22,9 @@ public class Room {
     @Column(length = 100)
     private String name;
 
+    @Column
+    private Integer feeAmount = 0;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -40,6 +43,8 @@ public class Room {
     public void setStatus(String status) { this.status = status; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+    public Integer getFeeAmount() { return feeAmount; }
+    public void setFeeAmount(Integer feeAmount) { this.feeAmount = feeAmount; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

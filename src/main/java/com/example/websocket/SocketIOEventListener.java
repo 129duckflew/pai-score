@@ -88,7 +88,8 @@ public class SocketIOEventListener {
             Long userId = client.get("userId");
             if (userId == null) { sendError(client, "未认证"); return; }
 
-            Room room = roomService.createRoom(userId);
+            Integer feeAmount = intFrom(msg != null ? msg.get("feeAmount") : null, 0);
+            Room room = roomService.createRoom(userId, feeAmount);
             client.joinRoom(room.getRoomCode());
             markOnline(room.getRoomCode(), userId);
 
@@ -100,6 +101,7 @@ public class SocketIOEventListener {
                 "type", "ROOM_CREATED",
                 "roomCode", room.getRoomCode(),
                 "roomName", roomDisplayName(room),
+                "feeAmount", room.getFeeAmount() != null ? room.getFeeAmount() : 0,
                 "players", buildPlayerList(room.getId(), userId)
             ));
         } catch (Exception e) {
@@ -226,6 +228,55 @@ public class SocketIOEventListener {
         }
     }
 
+    @OnEvent("SET_ROOM_FEE")
+    public void onSetRoomFee(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
+        try {
+            Long userId = client.get("userId");
+            if (userId == null) { sendError(client, "未认证"); return; }
+
+            String roomCode = (String) msg.get("roomCode");
+            Integer feeAmount = intFrom(msg.get("feeAmount"), 0);
+
+            ScoreEntry entry = gameService.setRoomFee(userId, roomCode, feeAmount);
+            Room room = roomService.findByCode(roomCode);
+
+            server.getRoomOperations(roomCode).sendEvent("ROOM_FEE_UPDATED", Map.of(
+                "type", "ROOM_FEE_UPDATED",
+                "feeAmount", room.getFeeAmount() != null ? room.getFeeAmount() : 0,
+                "entry", entryToMap(entry),
+                "players", buildPlayerList(room.getId(), null)
+            ));
+        } catch (Exception e) {
+            sendError(client, e.getMessage());
+        }
+    }
+
+    @OnEvent("REVERT_SCORE")
+    public void onRevertScore(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
+        try {
+            Long userId = client.get("userId");
+            if (userId == null) { sendError(client, "未认证"); return; }
+
+            String roomCode = (String) msg.get("roomCode");
+            Long entryId = ((Number) msg.get("entryId")).longValue();
+
+            ScoreEntry revertLog = gameService.revertScore(userId, roomCode, entryId);
+            Room room = roomService.findByCode(roomCode);
+            List<Map<String, Object>> entriesData = gameService.getEntries(room.getId()).stream()
+                .map(this::entryToMap)
+                .collect(Collectors.toList());
+
+            server.getRoomOperations(roomCode).sendEvent("SCORE_REVERTED", Map.of(
+                "type", "SCORE_REVERTED",
+                "entry", entryToMap(revertLog),
+                "entries", entriesData,
+                "players", buildPlayerList(room.getId(), null)
+            ));
+        } catch (Exception e) {
+            sendError(client, e.getMessage());
+        }
+    }
+
     @OnEvent("END_GAME")
     public void onEndGame(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
         try {
@@ -251,7 +302,8 @@ public class SocketIOEventListener {
             server.getRoomOperations(roomCode).sendEvent("GAME_OVER", Map.of(
                 "type", "GAME_OVER",
                 "players", buildPlayerList(room.getId(), null),
-                "entries", entriesData
+                "entries", entriesData,
+                "settlementTransfers", settlementTransfersToMap(room.getId())
             ));
         } catch (Exception e) {
             sendError(client, e.getMessage());
@@ -332,8 +384,10 @@ public class SocketIOEventListener {
             "roomName", roomDisplayName(room),
             "status", room.getStatus(),
             "hostId", room.getHostId(),
+            "feeAmount", room.getFeeAmount() != null ? room.getFeeAmount() : 0,
             "players", buildPlayerList(room.getId(), null),
-            "entries", entriesData
+            "entries", entriesData,
+            "settlementTransfers", settlementTransfersToMap(room.getId())
         ));
     }
 
@@ -398,8 +452,42 @@ public class SocketIOEventListener {
         m.put("note", e.getNote());
         m.put("addedByUserId", e.getAddedByUserId());
         m.put("type", e.getType());
+        m.put("reverted", Boolean.TRUE.equals(e.getReverted()));
+        m.put("revertedAt", e.getRevertedAt() != null ? e.getRevertedAt().toString() : null);
+        m.put("revertedByUserId", e.getRevertedByUserId());
+        m.put("revertOfEntryId", e.getRevertOfEntryId());
         m.put("createdAt", e.getCreatedAt() != null ? e.getCreatedAt().toString() : null);
         return m;
+    }
+
+    private List<Map<String, Object>> settlementTransfersToMap(Long roomId) {
+        return gameService.getSettlementTransfers(roomId).stream()
+            .map(t -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("fromPlayerId", t.getFromPlayerId());
+                m.put("fromPlayerName", playerName(roomId, t.getFromPlayerId()));
+                m.put("toPlayerId", t.getToPlayerId());
+                m.put("toPlayerName", playerName(roomId, t.getToPlayerId()));
+                m.put("amount", t.getAmount());
+                return m;
+            })
+            .collect(Collectors.toList());
+    }
+
+    private String playerName(Long roomId, Long playerId) {
+        return roomService.getPlayers(roomId).stream()
+            .filter(player -> player.getId().equals(playerId))
+            .findFirst()
+            .map(player -> userService.findById(player.getUserId()))
+            .map(User::getUsername)
+            .orElse("?");
+    }
+
+    private Integer intFrom(Object value, int defaultValue) {
+        if (value == null) return defaultValue;
+        if (value instanceof Number number) return number.intValue();
+        if (value instanceof String text && !text.isBlank()) return Integer.parseInt(text);
+        return defaultValue;
     }
 
     private void sendError(SocketIOClient client, String message) {

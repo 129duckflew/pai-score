@@ -2,14 +2,21 @@ package com.example.service;
 
 import com.example.entity.Room;
 import com.example.entity.RoomPlayer;
+import com.example.entity.ScoreEntry;
+import com.example.entity.SettlementTransfer;
 import com.example.entity.User;
 import com.example.repository.RoomPlayerRepository;
+import com.example.repository.ScoreEntryRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(properties = {
     "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1",
@@ -30,6 +37,9 @@ class ScoreConservationTest {
 
     @Autowired
     private RoomPlayerRepository playerRepository;
+
+    @Autowired
+    private ScoreEntryRepository entryRepository;
 
     @Test
     void twoPlayersSumIsZero() {
@@ -107,5 +117,84 @@ class ScoreConservationTest {
         assertThat(aP.getTotalScore()).isEqualTo(5);
         assertThat(bP.getTotalScore()).isEqualTo(-5);
         assertThat(aP.getTotalScore() + bP.getTotalScore()).isZero();
+    }
+
+    @Test
+    void revertScoreWithinOneMinuteRestoresTotalsAndKeepsLog() {
+        User a = userService.register("A");
+        User b = userService.register("B");
+        Room room = roomService.createRoom(a.getId());
+        roomService.joinRoom(b.getId(), room.getRoomCode());
+        gameService.startGame(a.getId(), room.getRoomCode());
+
+        RoomPlayer bP = playerRepository.findByRoomIdAndUserId(room.getId(), b.getId()).get();
+        ScoreEntry entry = gameService.submitScore(a.getId(), room.getRoomCode(), bP.getId(), 8, "");
+
+        ScoreEntry revertLog = gameService.revertScore(a.getId(), room.getRoomCode(), entry.getId());
+
+        RoomPlayer aP = playerRepository.findByRoomIdAndUserId(room.getId(), a.getId()).get();
+        bP = playerRepository.findByRoomIdAndUserId(room.getId(), b.getId()).get();
+        assertThat(aP.getTotalScore()).isZero();
+        assertThat(bP.getTotalScore()).isZero();
+        assertThat(entryRepository.findById(entry.getId()).get().getReverted()).isTrue();
+        assertThat(revertLog.getType()).isEqualTo("SCORE_REVERT");
+        assertThat(revertLog.getRevertOfEntryId()).isEqualTo(entry.getId());
+    }
+
+    @Test
+    void scoreCannotBeRevertedAfterOneMinute() {
+        User a = userService.register("A");
+        User b = userService.register("B");
+        Room room = roomService.createRoom(a.getId());
+        roomService.joinRoom(b.getId(), room.getRoomCode());
+        gameService.startGame(a.getId(), room.getRoomCode());
+
+        RoomPlayer bP = playerRepository.findByRoomIdAndUserId(room.getId(), b.getId()).get();
+        ScoreEntry entry = gameService.submitScore(a.getId(), room.getRoomCode(), bP.getId(), 8, "");
+        entry.setCreatedAt(LocalDateTime.now().minusSeconds(61));
+        entryRepository.save(entry);
+
+        assertThatThrownBy(() -> gameService.revertScore(a.getId(), room.getRoomCode(), entry.getId()))
+            .hasMessageContaining("一分钟");
+    }
+
+    @Test
+    void endGameCreatesMinimalSettlementTransfersWithAaRoomFee() {
+        User a = userService.register("A");
+        User b = userService.register("B");
+        User c = userService.register("C");
+        Room room = roomService.createRoom(a.getId(), 30);
+        roomService.joinRoom(b.getId(), room.getRoomCode());
+        roomService.joinRoom(c.getId(), room.getRoomCode());
+        gameService.startGame(a.getId(), room.getRoomCode());
+
+        RoomPlayer aP = playerRepository.findByRoomIdAndUserId(room.getId(), a.getId()).get();
+        RoomPlayer bP = playerRepository.findByRoomIdAndUserId(room.getId(), b.getId()).get();
+        RoomPlayer cP = playerRepository.findByRoomIdAndUserId(room.getId(), c.getId()).get();
+        gameService.submitScore(b.getId(), room.getRoomCode(), aP.getId(), 20, "");
+        gameService.submitScore(c.getId(), room.getRoomCode(), aP.getId(), 20, "");
+
+        gameService.endGame(a.getId(), room.getRoomCode());
+
+        List<SettlementTransfer> transfers = gameService.getSettlementTransfers(room.getId());
+        assertThat(transfers).hasSize(2);
+        assertThat(transfers).extracting(SettlementTransfer::getAmount).containsExactly(30, 30);
+        assertThat(transfers).allMatch(t -> t.getToPlayerId().equals(aP.getId()));
+    }
+
+    @Test
+    void setRoomFeeWritesLogWithoutChangingScores() {
+        User a = userService.register("A");
+        User b = userService.register("B");
+        Room room = roomService.createRoom(a.getId());
+        roomService.joinRoom(b.getId(), room.getRoomCode());
+
+        ScoreEntry feeLog = gameService.setRoomFee(a.getId(), room.getRoomCode(), 24);
+
+        assertThat(feeLog.getType()).isEqualTo("ROOM_FEE");
+        assertThat(feeLog.getScore()).isEqualTo(24);
+        assertThat(playerRepository.findByRoomId(room.getId()))
+            .extracting(RoomPlayer::getTotalScore)
+            .containsOnly(0);
     }
 }

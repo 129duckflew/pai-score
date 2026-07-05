@@ -30,6 +30,11 @@ public class RoomService {
 
     @Transactional
     public Room createRoom(Long hostUserId) {
+        return createRoom(hostUserId, 0);
+    }
+
+    @Transactional
+    public Room createRoom(Long hostUserId, Integer feeAmount) {
         checkNoActiveRoom(hostUserId);
         User hostUser = userService.findById(hostUserId);
         if (hostUser == null) throw new RuntimeException("用户不存在");
@@ -37,6 +42,7 @@ public class RoomService {
         room.setRoomCode(generateRoomCode());
         room.setHostId(hostUserId);
         room.setName(hostUser.getUsername() + "的房间");
+        room.setFeeAmount(safeFeeAmount(feeAmount));
         room.setStatus("WAITING");
         room.setCreatedAt(LocalDateTime.now());
         room = roomRepository.save(room);
@@ -121,6 +127,12 @@ public class RoomService {
 
     public List<RoomPlayer> getPlayersOrdered(Long roomId) {
         return playerRepository.findByRoomIdOrderByJoinedAtAsc(roomId);
+    }
+
+    private int safeFeeAmount(Integer feeAmount) {
+        if (feeAmount == null) return 0;
+        if (feeAmount < 0) throw new RuntimeException("房费不能为负数");
+        return feeAmount;
     }
 
     public List<Room> getActiveRooms() {

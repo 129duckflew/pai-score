@@ -23,6 +23,17 @@
           <h3 class="mt-2 text-2xl font-black text-white">创建新的计分房间</h3>
           <p class="mt-2 text-sm text-emerald-100/60">生成邀请码，邀请玩家入座后开始记录牌局。</p>
         </div>
+        <label class="block">
+          <span class="mb-2 block text-sm text-emerald-100/70">房费（AA 平摊）</span>
+          <input
+            v-model.number="feeAmount"
+            type="number"
+            min="0"
+            inputmode="numeric"
+            class="min-h-12 w-full text-base"
+            placeholder="不填则为 0"
+          />
+        </label>
         <button class="btn-success w-full justify-center" @click="createRoom" :disabled="creating">
           <Plus :size="18" />{{ creating ? '创建中...' : '创建新房间' }}
         </button>
@@ -99,6 +110,7 @@ import { getUserHistory, getActiveRooms } from '../services/api'
 const router = useRouter()
 const username = ref(localStorage.getItem('username') || '')
 const roomCode = ref('')
+const feeAmount = ref(0)
 const creating = ref(false)
 const error = ref('')
 const rooms = ref([])
@@ -160,7 +172,7 @@ function joinRoomByCode(code) {
 function createRoom() {
   creating.value = true
   error.value = ''
-  wsService.send('CREATE_ROOM')
+  wsService.send('CREATE_ROOM', { feeAmount: Math.max(0, Number(feeAmount.value) || 0) })
   setTimeout(() => { creating.value = false }, 2000)
 }
 
