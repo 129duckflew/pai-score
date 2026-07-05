@@ -85,21 +85,28 @@ public class RoomService {
                 .orElseThrow(() -> new RuntimeException("你不在房间中"));
 
         if (room.getHostId().equals(userId)) {
-            List<RoomPlayer> allPlayers = playerRepository.findByRoomId(room.getId());
-            playerRepository.deleteAll(allPlayers);
-            roomRepository.delete(room);
+            disbandRoom(room);
         } else {
+            if (!"WAITING".equals(room.getStatus())) {
+                clearActiveRoom(userId, roomCode);
+                return;
+            }
+
             playerRepository.delete(player);
 
             long count = playerRepository.countByRoomId(room.getId());
             if (count == 0) {
-                roomRepository.delete(room);
+                disbandRoom(room);
             }
         }
     }
 
     public Room findByCode(String roomCode) {
         return roomRepository.findByRoomCode(roomCode).orElse(null);
+    }
+
+    public Room findById(Long roomId) {
+        return roomRepository.findById(roomId).orElse(null);
     }
 
     public RoomPlayer findPlayer(Long roomId, Long userId) {
@@ -130,11 +137,27 @@ public class RoomService {
         List<RoomPlayer> players = playerRepository.findByUserId(userId);
         boolean hasActiveRoom = players.stream().anyMatch(rp ->
             roomRepository.findById(rp.getRoomId())
-                .map(r -> !"FINISHED".equals(r.getStatus()))
+                .map(r -> "WAITING".equals(r.getStatus()) || "PLAYING".equals(r.getStatus()))
                 .orElse(false)
         );
         if (hasActiveRoom) {
             throw new RuntimeException("你已在其他房间中，无法创建或加入新房间");
+        }
+    }
+
+    private void disbandRoom(Room room) {
+        room.setStatus("DISBANDED");
+        roomRepository.save(room);
+        for (RoomPlayer p : playerRepository.findByRoomId(room.getId())) {
+            clearActiveRoom(p.getUserId(), room.getRoomCode());
+        }
+    }
+
+    private void clearActiveRoom(Long userId, String roomCode) {
+        User user = userService.findById(userId);
+        if (user != null && roomCode.equals(user.getActiveRoomCode())) {
+            user.setActiveRoomCode(null);
+            userService.updateUser(user);
         }
     }
 

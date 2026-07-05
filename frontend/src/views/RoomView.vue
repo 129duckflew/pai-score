@@ -3,6 +3,7 @@
     <div class="header flex items-center gap-12 mb-12">
       <button class="btn-secondary" @click="goBack">← 返回</button>
       <h2 class="flex-1">房间 {{ roomCode }}</h2>
+      <span class="socket-dot" :class="{ online: socketConnected }" :title="socketConnected ? 'Socket 已连接' : 'Socket 未连接'"></span>
       <span v-if="roomState" :class="'badge badge-' + roomState.status.toLowerCase()">
         {{ statusText(roomState.status) }}
       </span>
@@ -34,6 +35,7 @@
             @click="isActive && p.userId !== myUserId && openScoreModal(p)"
           >
             <span class="avatar-emoji">{{ p.avatar || '?' }}</span>
+            <span class="player-online-dot" :class="{ online: p.online }" :title="p.online ? '在线' : '离线'"></span>
             <span v-if="p.userId === myUserId" class="self-label">自己</span>
           </div>
           <div class="player-info">
@@ -216,6 +218,7 @@ const players = ref([])
 const entries = ref([])
 const error = ref('')
 const leavingRef = ref(false)
+const socketConnected = ref(wsService.connected)
 
 const myUserId = computed(() => Number(localStorage.getItem('userId')))
 const isHost = computed(() => roomState.value?.hostId === myUserId.value)
@@ -273,7 +276,11 @@ onMounted(() => {
   unsubs.push(wsService.on('PLAYER_JOINED', handlePlayerJoined))
   unsubs.push(wsService.on('ERROR', (msg) => { error.value = msg.message }))
   unsubs.push(wsService.on('connected', () => {
+    socketConnected.value = true
     wsService.send('GET_ROOM_STATE', { roomCode })
+  }))
+  unsubs.push(wsService.on('disconnected', () => {
+    socketConnected.value = false
   }))
 
   wsService.send('GET_ROOM_STATE', { roomCode })
@@ -316,7 +323,7 @@ function handleGameOver(msg) {
 }
 
 function handleRoomDestroyed(msg) {
-  router.push('/lobby')
+  roomState.value = { ...roomState.value, status: 'DISBANDED' }
 }
 
 function handleDiceRollResult(msg) {
@@ -400,7 +407,7 @@ function playerName(playerId) {
 }
 
 function statusText(s) {
-  return s === 'WAITING' ? '等待中' : s === 'PLAYING' ? '进行中' : '已结束'
+  return s === 'WAITING' ? '等待中' : s === 'PLAYING' ? '进行中' : s === 'DISBANDED' ? '已解散' : '已结束'
 }
 
 function formatTime(t) {
@@ -462,6 +469,28 @@ function formatTime(t) {
   line-height: 1;
 }
 
+.socket-dot,
+.player-online-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #bfbfbf;
+  flex: 0 0 auto;
+}
+
+.socket-dot.online,
+.player-online-dot.online {
+  background: #52c41a;
+  box-shadow: 0 0 0 3px rgba(82,196,26,.14);
+}
+
+.player-online-dot {
+  position: absolute;
+  right: 3px;
+  bottom: 5px;
+  border: 2px solid #fff;
+}
+
 .self-label {
   position: absolute;
   bottom: -6px;
@@ -498,6 +527,7 @@ function formatTime(t) {
 .badge-waiting { background: #e6f7ff; color: #1890ff; }
 .badge-playing { background: #f6ffed; color: #52c41a; }
 .badge-finished { background: #f5f5f5; color: #999; }
+.badge-disbanded { background: #f5f5f5; color: #666; }
 .score-pos { color: #52c41a; font-weight: 600; }
 .score-neg { color: #ff4d4f; font-weight: 600; }
 

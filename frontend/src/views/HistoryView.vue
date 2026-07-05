@@ -57,7 +57,7 @@ onMounted(async () => {
 })
 
 function statusText(s) {
-  return s === 'WAITING' ? '等待中' : s === 'PLAYING' ? '进行中' : '已结束'
+  return s === 'WAITING' ? '等待中' : s === 'PLAYING' ? '进行中' : s === 'DISBANDED' ? '已解散' : '已结束'
 }
 
 function formatTime(t) {
@@ -72,6 +72,7 @@ function formatTime(t) {
 .badge-waiting { background: #e6f7ff; color: #1890ff; }
 .badge-playing { background: #f6ffed; color: #52c41a; }
 .badge-finished { background: #f5f5f5; color: #999; }
+.badge-disbanded { background: #f5f5f5; color: #666; }
 
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 

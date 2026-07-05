@@ -32,7 +32,7 @@ class RoomDestroyTest {
     private RoomPlayerRepository playerRepository;
 
     @Test
-    void hostLeaveDestroysRoomAndDeletesAllPlayers() {
+    void hostLeaveDisbandsRoomAndKeepsHistoryForAllPlayers() {
         User host = userService.register("Host");
         User guest = userService.register("Guest");
         Room room = roomService.createRoom(host.getId());
@@ -40,8 +40,15 @@ class RoomDestroyTest {
 
         roomService.leaveRoom(host.getId(), room.getRoomCode());
 
-        assertThat(roomRepository.findByRoomCode(room.getRoomCode())).isEmpty();
-        assertThat(playerRepository.findByRoomId(room.getId())).isEmpty();
+        Room disbanded = roomRepository.findByRoomCode(room.getRoomCode()).orElseThrow();
+        assertThat(disbanded.getStatus()).isEqualTo("DISBANDED");
+        assertThat(playerRepository.findByRoomId(room.getId())).hasSize(2);
+        assertThat(roomService.getUserRooms(host.getId()))
+            .extracting(Room::getRoomCode)
+            .contains(room.getRoomCode());
+        assertThat(roomService.getUserRooms(guest.getId()))
+            .extracting(Room::getRoomCode)
+            .contains(room.getRoomCode());
     }
 
     @Test
@@ -58,13 +65,15 @@ class RoomDestroyTest {
     }
 
     @Test
-    void lastPlayerLeaveDestroysRoom() {
+    void lastPlayerLeaveDisbandsRoom() {
         User host = userService.register("Host");
         Room room = roomService.createRoom(host.getId());
 
         roomService.leaveRoom(host.getId(), room.getRoomCode());
 
-        assertThat(roomRepository.findByRoomCode(room.getRoomCode())).isEmpty();
+        Room disbanded = roomRepository.findByRoomCode(room.getRoomCode()).orElseThrow();
+        assertThat(disbanded.getStatus()).isEqualTo("DISBANDED");
+        assertThat(playerRepository.findByRoomId(room.getId())).hasSize(1);
     }
 
     @Test
@@ -78,5 +87,25 @@ class RoomDestroyTest {
 
         assertThat(roomService.getActiveRooms())
             .noneMatch(r -> r.getRoomCode().equals(room.getRoomCode()));
+    }
+
+    @Test
+    void disbandedRoomDoesNotBlockFutureRooms() {
+        User host = userService.register("Host");
+        User guest = userService.register("Guest");
+        Room room = roomService.createRoom(host.getId());
+        roomService.joinRoom(guest.getId(), room.getRoomCode());
+
+        roomService.leaveRoom(host.getId(), room.getRoomCode());
+
+        Room nextHostRoom = roomService.createRoom(host.getId());
+        assertThat(nextHostRoom.getRoomCode()).isNotEqualTo(room.getRoomCode());
+        roomService.leaveRoom(host.getId(), nextHostRoom.getRoomCode());
+
+        Room otherRoom = roomService.createRoom(userService.register("OtherHost").getId());
+        roomService.joinRoom(guest.getId(), otherRoom.getRoomCode());
+        assertThat(roomService.getUserRooms(guest.getId()))
+            .extracting(Room::getRoomCode)
+            .contains(room.getRoomCode(), otherRoom.getRoomCode());
     }
 }

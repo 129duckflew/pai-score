@@ -2,6 +2,7 @@
   <div class="lobby">
     <div class="header flex items-center gap-12 mb-12">
       <h2 class="flex-1">打牌记账</h2>
+      <span class="socket-dot" :class="{ online: socketConnected }" :title="socketConnected ? 'Socket 已连接' : 'Socket 未连接'"></span>
       <span class="text-muted">{{ username }}</span>
       <button class="btn-secondary" @click="$router.push('/history')">历史</button>
       <button class="btn-secondary" @click="handleLogout">退出</button>
@@ -71,6 +72,7 @@ const error = ref('')
 const rooms = ref([])
 const activeRooms = ref([])
 const loading = ref(false)
+const socketConnected = ref(wsService.connected)
 let unsubs = []
 
 onMounted(() => {
@@ -85,7 +87,11 @@ onMounted(() => {
     loadHistory()
   }))
   unsubs.push(wsService.on('connected', () => {
+    socketConnected.value = true
     loadHistory()
+  }))
+  unsubs.push(wsService.on('disconnected', () => {
+    socketConnected.value = false
   }))
   unsubs.push(wsService.on('ERROR', (msg) => {
     error.value = msg.message
@@ -139,17 +145,20 @@ function handleLogout() {
 }
 
 function statusText(s) {
-  return s === 'WAITING' ? '等待中' : s === 'PLAYING' ? '进行中' : '已结束'
+  return s === 'WAITING' ? '等待中' : s === 'PLAYING' ? '进行中' : s === 'DISBANDED' ? '已解散' : '已结束'
 }
 </script>
 
 <style scoped>
 .items-center { align-items: center; }
 .room-item { padding: 8px 0; }
+.socket-dot { width: 10px; height: 10px; border-radius: 50%; background: #bfbfbf; flex: 0 0 auto; }
+.socket-dot.online { background: #52c41a; box-shadow: 0 0 0 3px rgba(82,196,26,.14); }
 .badge { font-size: 12px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
 .badge-waiting { background: #e6f7ff; color: #1890ff; }
 .badge-playing { background: #f6ffed; color: #52c41a; }
 .badge-finished { background: #f5f5f5; color: #999; }
+.badge-disbanded { background: #f5f5f5; color: #666; }
 
 @media (max-width: 600px) {
   .header { flex-wrap: wrap; gap: 6px; }

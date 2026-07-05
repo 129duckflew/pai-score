@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Component
@@ -19,6 +20,7 @@ public class SocketIOEventListener {
     private final UserService userService;
     private final RoomService roomService;
     private final GameService gameService;
+    private final Map<String, Set<Long>> onlineUsersByRoom = new ConcurrentHashMap<>();
 
     public SocketIOEventListener(@Lazy SocketIOServer server, UserService userService,
                                   RoomService roomService, GameService gameService) {
@@ -50,8 +52,10 @@ public class SocketIOEventListener {
         User user = userService.findById(userId);
         if (user != null && user.getActiveRoomCode() != null) {
             Room room = roomService.findByCode(user.getActiveRoomCode());
-            if (room != null && !"FINISHED".equals(room.getStatus())) {
+            if (room != null && isActiveRoom(room)) {
                 client.joinRoom(room.getRoomCode());
+                markOnline(room.getRoomCode(), userId);
+                broadcastPlayerList(room);
             }
         }
     }
@@ -65,26 +69,10 @@ public class SocketIOEventListener {
         if (user == null || user.getActiveRoomCode() == null) return;
 
         String roomCode = user.getActiveRoomCode();
-        try {
-            roomService.leaveRoom(userId, roomCode);
-        } catch (Exception ignored) {
-            // already left
-        }
-
-        user.setActiveRoomCode(null);
-        userService.updateUser(user);
-
+        markOffline(roomCode, userId);
         Room room = roomService.findByCode(roomCode);
-        if (room == null) {
-            server.getRoomOperations(roomCode).sendEvent("ROOM_DESTROYED", Map.of(
-                "type", "ROOM_DESTROYED",
-                "roomCode", roomCode
-            ));
-        } else {
-            server.getRoomOperations(roomCode).sendEvent("PLAYER_LIST", Map.of(
-                "type", "PLAYER_LIST",
-                "players", buildPlayerList(room.getId(), null)
-            ));
+        if (room != null && isActiveRoom(room)) {
+            broadcastPlayerList(room);
         }
     }
 
@@ -96,6 +84,7 @@ public class SocketIOEventListener {
 
             Room room = roomService.createRoom(userId);
             client.joinRoom(room.getRoomCode());
+            markOnline(room.getRoomCode(), userId);
 
             User user = userService.findById(userId);
             user.setActiveRoomCode(room.getRoomCode());
@@ -129,6 +118,7 @@ public class SocketIOEventListener {
             }
 
             client.joinRoom(roomCode);
+            markOnline(roomCode, userId);
 
             User user = userService.findById(userId);
             user.setActiveRoomCode(roomCode);
@@ -140,10 +130,7 @@ public class SocketIOEventListener {
                 "players", buildPlayerList(room.getId(), userId)
             ));
 
-            server.getRoomOperations(roomCode).sendEvent("PLAYER_LIST", Map.of(
-                "type", "PLAYER_LIST",
-                "players", buildPlayerList(room.getId(), null)
-            ));
+            broadcastPlayerList(room);
 
             User joinedUser = userService.findById(userId);
             server.getRoomOperations(roomCode).sendEvent("PLAYER_JOINED", Map.of(
@@ -166,6 +153,7 @@ public class SocketIOEventListener {
             String roomCode = (String) msg.get("roomCode");
             roomService.leaveRoom(userId, roomCode);
             client.leaveRoom(roomCode);
+            markOffline(roomCode, userId);
 
             User user = userService.findById(userId);
             if (user != null && roomCode.equals(user.getActiveRoomCode())) {
@@ -174,16 +162,14 @@ public class SocketIOEventListener {
             }
 
             Room room = roomService.findByCode(roomCode);
-            if (room == null) {
+            if (room == null || "DISBANDED".equals(room.getStatus())) {
+                onlineUsersByRoom.remove(roomCode);
                 server.getRoomOperations(roomCode).sendEvent("ROOM_DESTROYED", Map.of(
                     "type", "ROOM_DESTROYED",
                     "roomCode", roomCode
                 ));
             } else {
-                server.getRoomOperations(roomCode).sendEvent("PLAYER_LIST", Map.of(
-                    "type", "PLAYER_LIST",
-                    "players", buildPlayerList(room.getId(), null)
-                ));
+                broadcastPlayerList(room);
             }
         } catch (Exception e) {
             sendError(client, e.getMessage());
@@ -240,6 +226,7 @@ public class SocketIOEventListener {
 
             String roomCode = (String) msg.get("roomCode");
             Room room = gameService.endGame(userId, roomCode);
+            onlineUsersByRoom.remove(roomCode);
 
             for (RoomPlayer p : roomService.getPlayers(room.getId())) {
                 User u = userService.findById(p.getUserId());
@@ -274,7 +261,13 @@ public class SocketIOEventListener {
             if (room == null) throw new RuntimeException("房间不存在");
 
             client.joinRoom(roomCode);
+            if (isActiveRoom(room)) {
+                markOnline(roomCode, userId);
+            }
             sendRoomState(client, room);
+            if (isActiveRoom(room)) {
+                broadcastPlayerList(room);
+            }
         } catch (Exception e) {
             sendError(client, e.getMessage());
         }
@@ -347,9 +340,40 @@ public class SocketIOEventListener {
                 m.put("avatar", u != null ? u.getAvatar() : null);
                 m.put("totalScore", p.getTotalScore());
                 m.put("joinedAt", p.getJoinedAt() != null ? p.getJoinedAt().toString() : null);
+                m.put("online", isOnline(roomId, p.getUserId()));
                 return m;
             })
             .collect(Collectors.toList());
+    }
+
+    private boolean isActiveRoom(Room room) {
+        return "WAITING".equals(room.getStatus()) || "PLAYING".equals(room.getStatus());
+    }
+
+    private void markOnline(String roomCode, Long userId) {
+        onlineUsersByRoom.computeIfAbsent(roomCode, ignored -> ConcurrentHashMap.newKeySet()).add(userId);
+    }
+
+    private void markOffline(String roomCode, Long userId) {
+        Set<Long> onlineUsers = onlineUsersByRoom.get(roomCode);
+        if (onlineUsers == null) return;
+        onlineUsers.remove(userId);
+        if (onlineUsers.isEmpty()) {
+            onlineUsersByRoom.remove(roomCode);
+        }
+    }
+
+    private boolean isOnline(Long roomId, Long userId) {
+        Room room = roomService.findById(roomId);
+        if (room == null) return false;
+        return onlineUsersByRoom.getOrDefault(room.getRoomCode(), Set.of()).contains(userId);
+    }
+
+    private void broadcastPlayerList(Room room) {
+        server.getRoomOperations(room.getRoomCode()).sendEvent("PLAYER_LIST", Map.of(
+            "type", "PLAYER_LIST",
+            "players", buildPlayerList(room.getId(), null)
+        ));
     }
 
     private Map<String, Object> entryToMap(ScoreEntry e) {
