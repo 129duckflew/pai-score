@@ -20,14 +20,17 @@ public class SocketIOEventListener {
     private final UserService userService;
     private final RoomService roomService;
     private final GameService gameService;
+    private final OnlineUserRegistry onlineUserRegistry;
     private final Map<String, Set<Long>> onlineUsersByRoom = new ConcurrentHashMap<>();
 
     public SocketIOEventListener(@Lazy SocketIOServer server, UserService userService,
-                                  RoomService roomService, GameService gameService) {
+                                  RoomService roomService, GameService gameService,
+                                  OnlineUserRegistry onlineUserRegistry) {
         this.server = server;
         this.userService = userService;
         this.roomService = roomService;
         this.gameService = gameService;
+        this.onlineUserRegistry = onlineUserRegistry;
     }
 
     @OnConnect
@@ -41,6 +44,8 @@ public class SocketIOEventListener {
             client.disconnect();
             return;
         }
+
+        onlineUserRegistry.markOnline(userId);
 
         client.sendEvent("AUTH_OK", Map.of(
             "type", "AUTH_OK",
@@ -64,6 +69,7 @@ public class SocketIOEventListener {
     public void onDisconnect(SocketIOClient client) {
         Long userId = client.get("userId");
         if (userId == null) return;
+        onlineUserRegistry.markOffline(userId);
 
         User user = userService.findById(userId);
         if (user == null || user.getActiveRoomCode() == null) return;
@@ -398,5 +404,15 @@ public class SocketIOEventListener {
 
     private void sendError(SocketIOClient client, String message) {
         client.sendEvent("ERROR", Map.of("type", "ERROR", "message", message));
+    }
+
+    public void broadcastRoomsDestroyed(List<String> roomCodes) {
+        for (String roomCode : roomCodes) {
+            onlineUsersByRoom.remove(roomCode);
+            server.getRoomOperations(roomCode).sendEvent("ROOM_DESTROYED", Map.of(
+                "type", "ROOM_DESTROYED",
+                "roomCode", roomCode
+            ));
+        }
     }
 }

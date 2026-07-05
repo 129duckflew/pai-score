@@ -2,6 +2,8 @@ package com.example.service;
 
 import com.example.entity.User;
 import com.example.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -41,5 +43,35 @@ public class UserService {
 
     public User updateUser(User user) {
         return userRepository.save(user);
+    }
+
+    public Page<User> listUsers(String query, Pageable pageable) {
+        if (query == null || query.isBlank()) {
+            return userRepository.findAll(pageable);
+        }
+        return userRepository.findByUsernameContainingIgnoreCase(query.trim(), pageable);
+    }
+
+    public User createUser(String username, String avatar) {
+        User user = new User();
+        user.setUsername(username.trim());
+        user.setAvatar(avatar != null && !avatar.isBlank() ? avatar.trim() : AVATARS.get((int)(Math.random() * AVATARS.size())));
+        user.setToken(UUID.randomUUID().toString());
+        user.setCreatedAt(LocalDateTime.now());
+        return userRepository.save(user);
+    }
+
+    public User updateUser(Long id, String username, String avatar, String token, String activeRoomCode) {
+        User user = findById(id);
+        if (user == null) return null;
+        if (username != null && !username.isBlank()) user.setUsername(username.trim());
+        user.setAvatar(avatar != null && !avatar.isBlank() ? avatar.trim() : null);
+        if (token != null && !token.isBlank()) user.setToken(token.trim());
+        user.setActiveRoomCode(activeRoomCode != null && !activeRoomCode.isBlank() ? activeRoomCode.trim() : null);
+        return userRepository.save(user);
+    }
+
+    public void deleteUser(Long id) {
+        userRepository.deleteById(id);
     }
 }

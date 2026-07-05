@@ -1,5 +1,5 @@
 // @ts-ignore
-import { project, service, postgres, github, volume } from "railway/iac";
+import { project, service, postgres, github, volume, preserve } from "railway/iac";
 
 const db = postgres("Postgres");
 const dbVolume = volume("postgres-volume", {
@@ -30,6 +30,7 @@ const backend = service("backend", {
     PGUSER: db.env.PGUSER,
     PGPASSWORD: db.env.PGPASSWORD,
     PGDATABASE: db.env.PGDATABASE,
+    ADMIN_PASSWORD: preserve(),
   },
 });
 

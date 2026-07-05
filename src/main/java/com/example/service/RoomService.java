@@ -5,6 +5,8 @@ import com.example.entity.RoomPlayer;
 import com.example.entity.User;
 import com.example.repository.RoomPlayerRepository;
 import com.example.repository.RoomRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -125,12 +127,45 @@ public class RoomService {
         return roomRepository.findByStatus("WAITING");
     }
 
+    public Page<Room> getRooms(String query, String status, Pageable pageable) {
+        boolean hasQuery = query != null && !query.isBlank();
+        boolean hasStatus = status != null && !status.isBlank();
+        if (hasQuery && hasStatus) {
+            String q = query.trim();
+            String s = status.trim();
+            return roomRepository.findByStatusAndRoomCodeContainingIgnoreCaseOrStatusAndNameContainingIgnoreCase(s, q, s, q, pageable);
+        }
+        if (hasQuery) {
+            String q = query.trim();
+            return roomRepository.findByRoomCodeContainingIgnoreCaseOrNameContainingIgnoreCase(q, q, pageable);
+        }
+        if (hasStatus) {
+            return roomRepository.findByStatus(status.trim(), pageable);
+        }
+        return roomRepository.findAll(pageable);
+    }
+
+    public List<Room> getRoomsByStatus(String status) {
+        return roomRepository.findByStatus(status);
+    }
+
     public List<Room> getUserRooms(Long userId) {
         List<RoomPlayer> players = playerRepository.findByUserId(userId);
         return players.stream()
                 .map(p -> roomRepository.findById(p.getRoomId()).orElse(null))
                 .filter(r -> r != null)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public List<String> closeAllActiveRooms() {
+        List<Room> activeRooms = roomRepository.findAll().stream()
+                .filter(this::isActiveRoom)
+                .collect(Collectors.toList());
+        for (Room room : activeRooms) {
+            disbandRoom(room);
+        }
+        return activeRooms.stream().map(Room::getRoomCode).collect(Collectors.toList());
     }
 
     private void checkNoActiveRoom(Long userId) {
@@ -151,6 +186,10 @@ public class RoomService {
         for (RoomPlayer p : playerRepository.findByRoomId(room.getId())) {
             clearActiveRoom(p.getUserId(), room.getRoomCode());
         }
+    }
+
+    private boolean isActiveRoom(Room room) {
+        return "WAITING".equals(room.getStatus()) || "PLAYING".equals(room.getStatus());
     }
 
     private void clearActiveRoom(Long userId, String roomCode) {

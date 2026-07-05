@@ -29,6 +29,11 @@ const routes = [
     name: 'history',
     component: () => import('../views/HistoryView.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin',
+    name: 'admin',
+    component: () => import('../views/AdminView.vue')
   }
 ]
 
