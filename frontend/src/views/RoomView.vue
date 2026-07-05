@@ -117,6 +117,7 @@
             <th>操作</th>
             <th>分数</th>
             <th>备注</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -131,7 +132,10 @@
             </td>
             <td class="text-muted">
               <span>{{ e.note || '-' }}</span>
-              <button v-if="canRevert(e)" class="btn-secondary ml-2" @click="revertScore(e.id)">撤回</button>
+            </td>
+            <td>
+              <button v-if="canRevert(e)" class="btn-secondary btn-table-action" @click="revertScore(e.id)">撤回</button>
+              <span v-else class="text-emerald-100/35">-</span>
             </td>
           </tr>
         </tbody>
@@ -484,8 +488,7 @@ function entryScoreClass(entry) {
 
 function canRevert(entry) {
   if (!isActive.value || entry.type !== 'SCORE' || entry.reverted) return false
-  if (entry.addedByUserId !== myUserId.value) return false
-  return Date.now() - new Date(entry.createdAt).getTime() <= 60 * 1000
+  return entry.addedByUserId === myUserId.value
 }
 
 function statusText(s) {
