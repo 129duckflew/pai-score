@@ -4,7 +4,8 @@ COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
 COPY src ./src
-RUN mvn package -DskipTests -B
+ARG MAVEN_PROFILES=railway-aot
+RUN mvn package -DskipTests -B -P${MAVEN_PROFILES}
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
@@ -13,4 +14,4 @@ ENV PORT=8081
 ENV SOCKETIO_PORT=8089
 EXPOSE 8081
 EXPOSE 8089
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT} -Dsocketio.port=${SOCKETIO_PORT} -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java -Dspring.aot.enabled=true -Dserver.port=${PORT} -Dsocketio.port=${SOCKETIO_PORT} -jar app.jar"]
