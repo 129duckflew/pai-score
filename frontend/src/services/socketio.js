@@ -36,8 +36,14 @@ class SocketIOService {
       this._emit('disconnected')
     })
 
-    this.socket.on('connect_error', () => {
-      this._emit('error')
+    this.socket.on('connect_error', (err) => {
+      this.connected = false
+      if (this._isAuthError(err)) {
+        this.disconnect()
+        this._emit('AUTH_FAILED', err)
+        return
+      }
+      this._emit('error', err)
     })
 
     this.socket.on('AUTH_OK', (msg) => {
@@ -50,7 +56,7 @@ class SocketIOService {
     })
 
     this.socket.on('ERROR', (msg) => {
-      if (msg.message === 'token 无效' || msg.message === '缺少 token') {
+      if (msg.message === 'token 无效' || msg.message === '缺少 token' || msg.message === '未认证') {
         this.disconnect()
         this._emit('AUTH_FAILED', msg)
         return
@@ -92,6 +98,12 @@ class SocketIOService {
 
   _emit(event, data) {
     (this.listeners[event] || []).forEach(cb => cb(data))
+  }
+
+  _isAuthError(err) {
+    const message = String(err?.message || '')
+    const status = err?.description || err?.context?.status || err?.context?.statusCode
+    return status === 401 || /401|unauthorized|token|auth/i.test(message)
   }
 
   disconnect() {

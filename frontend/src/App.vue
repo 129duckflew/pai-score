@@ -13,14 +13,14 @@ const router = useRouter()
 let unsubAuthFailed = null
 
 onMounted(() => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    wsService.connect(token)
-  }
   unsubAuthFailed = wsService.on('AUTH_FAILED', () => {
     localStorage.clear()
     router.push('/login')
   })
+  const token = localStorage.getItem('token')
+  if (token) {
+    wsService.connect(token)
+  }
 })
 
 onUnmounted(() => {
