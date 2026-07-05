@@ -1,23 +1,32 @@
 <template>
-  <div class="login-page">
-    <div class="card login-card">
-      <h2 class="text-center">打牌记账</h2>
-      <p class="text-center text-muted mb-12">输入用户名即可开始</p>
+  <div class="app-shell flex items-center justify-center">
+    <div class="w-full max-w-md">
+      <div class="mb-5 flex justify-center">
+        <div class="rounded-3xl border border-gold/30 bg-gold/15 p-4 text-gold shadow-gold">
+          <Gamepad2 :size="36" />
+        </div>
+      </div>
+      <div class="panel-strong">
+        <p class="mb-2 text-center text-xs font-semibold uppercase tracking-[0.28em] text-gold/80">Pai Score</p>
+        <h2 class="text-center text-4xl font-black text-white">打牌记账</h2>
+        <p class="mb-6 mt-3 text-center text-sm text-emerald-100/60">进入牌桌，实时记分、投骰和查看战绩</p>
       <form @submit.prevent="handleRegister">
-        <div class="flex gap-8">
+        <div class="flex flex-col gap-3 sm:flex-row">
           <input
             v-model="username"
             placeholder="请输入名称"
-            class="flex-1"
+            class="min-h-12 flex-1 text-base"
             :disabled="loading"
             autofocus
           />
-          <button type="submit" class="btn-primary" :disabled="loading || !username.trim()">
+          <button type="submit" class="btn-primary min-h-12 sm:px-6" :disabled="loading || !username.trim()">
+            <LogIn :size="18" />
             {{ loading ? '登录中...' : '进入' }}
           </button>
         </div>
       </form>
-      <p v-if="error" class="alert alert-error mt-12">{{ error }}</p>
+      <p v-if="error" class="alert alert-error mt-4">{{ error }}</p>
+      </div>
     </div>
   </div>
 </template>
@@ -25,6 +34,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Gamepad2, LogIn } from '@lucide/vue'
 import { register } from '../services/api'
 import { wsService } from '../services/socketio'
 
@@ -52,13 +62,3 @@ async function handleRegister() {
   }
 }
 </script>
-
-<style scoped>
-.login-page { display: flex; justify-content: center; padding-top: 80px; }
-.login-card { width: 380px; }
-
-@media (max-width: 600px) {
-  .login-page { padding: 32px 12px 0; }
-  .login-card { width: 100%; }
-}
-</style>

@@ -1,8 +1,11 @@
 <template>
-  <div class="room">
-    <div class="header flex items-center gap-12 mb-12">
-      <button class="btn-secondary" @click="goBack">← 返回</button>
-      <h2 class="flex-1">{{ roomDisplayName }}</h2>
+  <div class="app-shell room space-y-5">
+    <div class="header flex flex-col gap-4 rounded-3xl border border-white/10 bg-ink/65 p-5 shadow-glow backdrop-blur-xl sm:flex-row sm:items-center">
+      <button class="btn-secondary w-fit" @click="goBack"><ArrowLeft :size="17" />返回</button>
+      <div class="flex-1">
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-gold/80">Room {{ roomCode }}</p>
+        <h2 class="mt-2 text-3xl font-black text-white">{{ roomDisplayName }}</h2>
+      </div>
       <span class="socket-dot" :class="{ online: socketConnected }" :title="socketConnected ? 'Socket 已连接' : 'Socket 未连接'"></span>
       <span v-if="roomState" :class="'badge badge-' + roomState.status.toLowerCase()">
         {{ statusText(roomState.status) }}
@@ -17,9 +20,9 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="flex items-center gap-8 mb-12">
-        <span class="text-lg">玩家列表</span>
+    <div class="panel-strong">
+      <div class="mb-4 flex items-center gap-3">
+        <span class="text-xl font-black text-white">玩家列表</span>
         <span class="text-muted" v-if="roomState">当前 {{ players.length }} 人</span>
       </div>
       <div v-if="players.length" class="player-grid">
@@ -51,46 +54,47 @@
     </div>
 
     <!-- Waiting: host controls -->
-    <div class="card" v-if="isWaiting && isHost">
-      <p class="text-muted mb-12">邀请码: <strong>{{ roomCode }}</strong>（分享给好友加入）</p>
-      <div class="flex gap-8">
+    <div class="panel" v-if="isWaiting && isHost">
+      <p class="mb-4 text-sm text-emerald-100/65">邀请码: <strong class="text-gold">{{ roomCode }}</strong>（分享给好友加入）</p>
+      <div class="flex flex-col gap-3 sm:flex-row">
         <button class="btn-success flex-1" @click="startGame" :disabled="players.length < 2">
+          <Play :size="18" />
           开始游戏（至少2人）
         </button>
-        <button class="btn-danger-outline" @click="confirmDestroyRoom">解散房间</button>
+        <button class="btn-danger-outline" @click="confirmDestroyRoom"><Trash2 :size="18" />解散房间</button>
       </div>
     </div>
 
     <!-- Waiting: non-host -->
-    <div class="card" v-if="isWaiting && !isHost">
+    <div class="panel" v-if="isWaiting && !isHost">
       <p class="text-muted">等待房主开始游戏...</p>
-      <button class="btn-danger mt-12" @click="leaveRoom">离开房间</button>
+      <button class="btn-danger mt-4" @click="leaveRoom">离开房间</button>
     </div>
 
     <!-- Playing: hint -->
-    <div class="card" v-if="isActive">
+    <div class="panel" v-if="isActive">
       <p class="text-muted">点击其他玩家的头像为其记分</p>
     </div>
 
     <!-- Host controls during play -->
-    <div class="card" v-if="isActive && isHost">
-      <div class="flex gap-8">
-        <button class="btn-danger" @click="endGame">结束游戏</button>
+    <div class="panel" v-if="isActive && isHost">
+      <div class="flex gap-3">
+        <button class="btn-danger" @click="endGame"><Square :size="18" />结束游戏</button>
       </div>
     </div>
 
     <!-- Mahjong Calculator -->
-    <div class="card">
-      <div class="flex items-center gap-8">
-        <span class="flex-1 text-lg">🀄 麻将计算器</span>
-        <button class="btn-primary" @click="showMahjongCalc = true">打开</button>
+    <div class="panel">
+      <div class="flex items-center gap-3">
+        <span class="flex-1 text-xl font-black text-white">麻将计算器</span>
+        <button class="btn-primary" @click="showMahjongCalc = true"><Calculator :size="18" />打开</button>
       </div>
-      <p class="text-muted mt-12">输入手牌，分析胡牌牌型与听牌推荐</p>
+      <p class="mt-3 text-sm text-emerald-100/55">输入手牌，分析胡牌牌型与听牌推荐</p>
     </div>
 
     <!-- Score entries history -->
-    <div class="card" v-if="entries.length">
-      <h3 class="mb-12">记分记录</h3>
+    <div class="panel" v-if="entries.length">
+      <h3 class="mb-4 text-xl font-black text-white">记分记录</h3>
       <div class="table-scroll">
       <table>
         <thead>
@@ -127,8 +131,8 @@
     </div>
 
     <!-- Game over summary -->
-    <div v-if="isFinished" class="card">
-      <h3 class="mb-12">最终排名</h3>
+    <div v-if="isFinished" class="panel-strong">
+      <h3 class="mb-4 text-xl font-black text-white">最终排名</h3>
       <div class="table-scroll">
       <table>
         <thead>
@@ -155,7 +159,7 @@
           <span class="modal-title">给 {{ scoringTarget.username }} 记分</span>
         </div>
         <div class="modal-body">
-          <label class="mb-4">分数</label>
+          <label class="mb-2">分数</label>
           <input
             ref="scoreInputEl"
             v-model.number="scoreInput"
@@ -173,7 +177,7 @@
             确认记分
           </button>
         </div>
-        <p v-if="modalError" class="alert alert-error mt-12">{{ modalError }}</p>
+        <p v-if="modalError" class="alert alert-error mt-4">{{ modalError }}</p>
       </div>
     </div>
 
@@ -191,11 +195,11 @@
     <!-- Floating action menu -->
     <div class="fab-container" v-if="isActive">
       <div v-if="fabOpen" class="fab-menu">
-        <button class="fab-menu-item" @click="rollDice">🎲 投掷骰子</button>
+        <button class="fab-menu-item" @click="rollDice"><Dice5 :size="17" />投掷骰子</button>
       </div>
       <button class="fab-btn" @click="fabOpen = !fabOpen">
-        <span v-if="fabOpen">✕</span>
-        <span v-else>🎲</span>
+        <X v-if="fabOpen" :size="24" />
+        <Dice5 v-else :size="25" />
       </button>
     </div>
   </div>
@@ -204,6 +208,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ArrowLeft, Calculator, Dice5, Play, Square, Trash2, X } from '@lucide/vue'
 import { wsService } from '../services/socketio'
 import DiceRoller from '../components/DiceRoller.vue'
 import MahjongCalculator from '../components/MahjongCalculator.vue'
@@ -431,10 +436,15 @@ function formatTime(t) {
   flex-direction: column;
   align-items: center;
   padding: 16px 8px;
-  border: 1px solid #e8e8e8;
-  border-radius: 12px;
-  background: #fafafa;
-  transition: box-shadow 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.055));
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.player-card.is-self {
+  border-color: rgba(243, 201, 105, 0.55);
+  box-shadow: 0 0 28px rgba(243, 201, 105, 0.12);
 }
 
 .player-card:not(.is-self) {
@@ -449,8 +459,8 @@ function formatTime(t) {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #fff;
-  border: 2px solid #e8e8e8;
+  background: rgba(255,255,255,.92);
+  border: 2px solid rgba(243, 201, 105, 0.32);
   margin-bottom: 8px;
   transition: transform 0.15s, border-color 0.15s;
 }
@@ -460,9 +470,9 @@ function formatTime(t) {
 }
 
 .avatar.clickable:hover {
-  transform: scale(1.1);
-  border-color: #1890ff;
-  box-shadow: 0 0 12px rgba(24, 144, 255, 0.3);
+  transform: translateY(-2px) scale(1.08);
+  border-color: #f3c969;
+  box-shadow: 0 0 18px rgba(243, 201, 105, 0.32);
 }
 
 .avatar-emoji {
@@ -475,29 +485,29 @@ function formatTime(t) {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #bfbfbf;
+  background: rgba(255,255,255,.35);
   flex: 0 0 auto;
 }
 
 .socket-dot.online,
 .player-online-dot.online {
-  background: #52c41a;
-  box-shadow: 0 0 0 3px rgba(82,196,26,.14);
+  background: #35d399;
+  box-shadow: 0 0 0 3px rgba(53,211,153,.16);
 }
 
 .player-online-dot {
   position: absolute;
   right: 3px;
   bottom: 5px;
-  border: 2px solid #fff;
+  border: 2px solid #0d1f1b;
 }
 
 .self-label {
   position: absolute;
   bottom: -6px;
   font-size: 10px;
-  background: #e6f7ff;
-  color: #1890ff;
+  background: #f3c969;
+  color: #09110f;
   padding: 0 6px;
   border-radius: 6px;
   white-space: nowrap;
@@ -514,29 +524,23 @@ function formatTime(t) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: #fff;
 }
 
 .player-score {
   font-size: 16px;
   font-weight: 700;
-  color: #333;
+  color: #f3c969;
   margin-top: 4px;
 }
 
-.host-tag { font-size: 11px; background: #fff7e6; color: #fa8c16; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
-.badge { font-size: 12px; padding: 2px 10px; border-radius: 10px; }
-.badge-waiting { background: #e6f7ff; color: #1890ff; }
-.badge-playing { background: #f6ffed; color: #52c41a; }
-.badge-finished { background: #f5f5f5; color: #999; }
-.badge-disbanded { background: #f5f5f5; color: #666; }
-.score-pos { color: #52c41a; font-weight: 600; }
-.score-neg { color: #ff4d4f; font-weight: 600; }
+.host-tag { font-size: 11px; background: rgba(243,201,105,.18); color: #f3c969; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
 
 /* Modal */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.62);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -544,12 +548,14 @@ function formatTime(t) {
 }
 
 .modal {
-  background: #fff;
-  border-radius: 12px;
+  background: rgba(9, 17, 15, 0.96);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
   padding: 24px;
   width: 340px;
   max-width: 90vw;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  color: #fff;
 }
 
 .modal-header {
@@ -572,7 +578,7 @@ function formatTime(t) {
 .modal-body label {
   display: block;
   font-size: 13px;
-  color: #666;
+  color: rgba(209, 250, 229, 0.65);
 }
 
 .modal-footer {
@@ -608,11 +614,11 @@ input[type="number"].full-width {
   height: 56px;
   border-radius: 50%;
   border: none;
-  background: #1890ff;
-  color: #fff;
+  background: #f3c969;
+  color: #09110f;
   font-size: 24px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.4);
+  box-shadow: 0 14px 34px rgba(243, 201, 105, 0.28);
   transition: transform 0.15s, box-shadow 0.15s;
   display: flex;
   align-items: center;
@@ -621,22 +627,26 @@ input[type="number"].full-width {
 
 .fab-btn:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 20px rgba(24, 144, 255, 0.5);
+  box-shadow: 0 18px 42px rgba(243, 201, 105, 0.34);
 }
 
 .fab-menu {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  background: rgba(9, 17, 15, 0.96);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.32);
   overflow: hidden;
 }
 
 .fab-menu-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   padding: 12px 20px;
   border: none;
   background: none;
+  color: #fff;
   cursor: pointer;
   font-size: 15px;
   text-align: left;
@@ -645,15 +655,15 @@ input[type="number"].full-width {
 }
 
 .fab-menu-item:hover {
-  background: #f0f5ff;
+  background: rgba(243, 201, 105, 0.14);
 }
 
 .dice-row {
-  background: #fffbe6;
+  background: rgba(243, 201, 105, 0.08);
 }
 
 .dice-row:hover {
-  background: #fff7cc;
+  background: rgba(243, 201, 105, 0.14);
 }
 
 @media (max-width: 600px) {
@@ -691,10 +701,11 @@ input[type="number"].full-width {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #333;
+  background: rgba(9, 17, 15, 0.96);
+  border: 1px solid rgba(255,255,255,.12);
   color: #fff;
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: 14px;
   font-size: 14px;
   box-shadow: 0 4px 12px rgba(0,0,0,.2);
   animation: toast-in .3s ease-out;

@@ -1,11 +1,14 @@
 <template>
-  <div class="history">
-    <div class="header flex items-center gap-12 mb-12">
-      <button class="btn-secondary" @click="$router.push('/lobby')">← 返回</button>
-      <h2 class="flex-1">历史记录</h2>
+  <div class="app-shell space-y-5">
+    <div class="flex flex-col gap-4 rounded-3xl border border-white/10 bg-ink/60 p-5 shadow-glow backdrop-blur-xl sm:flex-row sm:items-center">
+      <button class="btn-secondary w-fit" @click="$router.push('/lobby')"><ArrowLeft :size="17" />返回</button>
+      <div class="flex-1">
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-gold/80">Archive</p>
+        <h2 class="mt-2 text-3xl font-black text-white">历史记录</h2>
+      </div>
     </div>
 
-    <div class="card" v-if="rooms.length">
+    <div class="panel" v-if="rooms.length">
       <div class="table-scroll">
       <table>
         <thead>
@@ -36,14 +39,15 @@
       </table>
       </div>
     </div>
-    <div class="card" v-else>
-      <p class="text-center text-muted">暂无历史记录</p>
+    <div class="panel text-center" v-else>
+      <p class="text-muted">暂无历史记录</p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ArrowLeft } from '@lucide/vue'
 import { getUserHistory } from '../services/api'
 
 const rooms = ref([])
@@ -74,18 +78,6 @@ function formatTime(t) {
 </script>
 
 <style scoped>
-.items-center { align-items: center; }
-.badge { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
-.badge-waiting { background: #e6f7ff; color: #1890ff; }
-.badge-playing { background: #f6ffed; color: #52c41a; }
-.badge-finished { background: #f5f5f5; color: #999; }
-.badge-disbanded { background: #f5f5f5; color: #666; }
 .room-code { display: block; font-size: 12px; margin-top: 2px; }
-
-.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-@media (max-width: 600px) {
-  .header { flex-wrap: wrap; gap: 8px; }
-  .header h2 { font-size: 15px; }
-}
+@media (max-width: 640px) { table { min-width: 560px; } }
 </style>
