@@ -5,8 +5,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -25,10 +23,6 @@ public class RequestTraceFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         long started = System.currentTimeMillis();
         try (TraceContext.Scope scope = TraceContext.open(request.getHeader(REQUEST_ID_HEADER), request.getHeader(TRACEPARENT_HEADER))) {
-            SpanContext spanContext = Span.current().getSpanContext();
-            if (spanContext.isValid()) {
-                TraceContext.putTrace(spanContext.getTraceId(), spanContext.getSpanId());
-            }
             response.setHeader(REQUEST_ID_HEADER, scope.id());
             TraceContext.put("method", request.getMethod());
             TraceContext.put("path", request.getRequestURI());

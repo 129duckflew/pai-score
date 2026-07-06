@@ -31,16 +31,6 @@ const backend = service("backend", {
     PGPASSWORD: db.env.PGPASSWORD,
     PGDATABASE: db.env.PGDATABASE,
     ADMIN_PASSWORD: preserve(),
-    OTEL_SERVICE_NAME: "pai-score-backend",
-    OTEL_RESOURCE_ATTRIBUTES: "service.namespace=pai-score,deployment.environment=production",
-    OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf",
-    OTEL_TRACES_EXPORTER: "otlp",
-    OTEL_METRICS_EXPORTER: "none",
-    OTEL_LOGS_EXPORTER: "none",
-    OTEL_TRACES_SAMPLER: "parentbased_traceidratio",
-    OTEL_TRACES_SAMPLER_ARG: "1.0",
-    OTEL_EXPORTER_OTLP_ENDPOINT: preserve(),
-    OTEL_EXPORTER_OTLP_HEADERS: preserve(),
   },
 });
 

@@ -161,8 +161,12 @@
           <button class="btn-secondary" @click="searchTrace"><Search :size="17" />查询链路</button>
           <button class="btn-secondary" @click="clearTrace"><X :size="17" />清空</button>
         </div>
-        <pre v-if="traceLogs.length" class="log-view trace-view">{{ traceLogs.join('\n') }}</pre>
-        <pre class="log-view">{{ logs.join('\n') }}</pre>
+        <div v-if="traceLogs.length" class="log-view trace-view">
+          <pre v-for="(entry, index) in traceLogs" :key="`trace-${index}`" class="log-entry">{{ formatLogEntry(entry) }}</pre>
+        </div>
+        <div class="log-view">
+          <pre v-for="(entry, index) in logs" :key="index" class="log-entry">{{ formatLogEntry(entry) }}</pre>
+        </div>
       </section>
     </template>
   </div>
@@ -346,13 +350,13 @@ async function loadRuntime() {
     guardRequest(() => getAdminLogs({ limit: 240 }))
   ])
   if (runtimeData) runtime.value = runtimeData
-  if (logData) logs.value = logData.lines || []
+  if (logData) logs.value = logEntries(logData)
 }
 
 async function searchTrace() {
   if (!traceQuery.value.trim()) return
   const data = await guardRequest(() => getAdminLogs({ limit: 500, traceId: traceQuery.value.trim() }))
-  if (data) traceLogs.value = data.lines || []
+  if (data) traceLogs.value = logEntries(data)
 }
 
 function clearTrace() {
@@ -362,6 +366,20 @@ function clearTrace() {
 
 function formatTime(value) {
   return value ? String(value).substring(0, 19).replace('T', ' ') : '-'
+}
+
+function logEntries(data) {
+  if (Array.isArray(data?.entries) && data.entries.length) return data.entries
+  return (data?.lines || []).map(line => ({ raw: line }))
+}
+
+function formatLogEntry(entry) {
+  if (typeof entry === 'string') return entry
+  return JSON.stringify(compactLogEntry(entry), null, 2)
+}
+
+function compactLogEntry(entry) {
+  return Object.fromEntries(Object.entries(entry || {}).filter(([, value]) => value !== null && value !== ''))
 }
 
 function bytes(value) {
@@ -414,6 +432,8 @@ function uptime(seconds) {
 .trace-search input { min-width: min(100%, 360px); flex: 1; }
 .log-view { min-height: 360px; max-height: 560px; overflow: auto; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: rgba(0,0,0,.35); padding: 14px; color: #d7f7e8; font-size: 12px; line-height: 1.55; white-space: pre-wrap; }
 .log-view.trace-view { border-color: rgba(243,201,105,.32); background: rgba(28,21,5,.36); }
+.log-entry { margin: 0 0 10px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,.08); white-space: pre-wrap; word-break: break-word; }
+.log-entry:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
 @media (max-width: 760px) {
   .admin-header { align-items: flex-start; flex-direction: column; }
   .admin-editor { grid-template-columns: 1fr; }

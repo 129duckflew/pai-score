@@ -8,7 +8,6 @@ import java.util.regex.Pattern;
 public final class TraceContext {
     public static final String TRACE_ID = "traceId";
     public static final String TRACE_ID_STANDARD = "trace_id";
-    public static final String SPAN_ID_STANDARD = "span_id";
     public static final String REQUEST_ID = "requestId";
     public static final String USER_ID = "userId";
     public static final String ROOM_CODE = "roomCode";
@@ -41,16 +40,6 @@ public final class TraceContext {
         if (value != null) MDC.put(key, String.valueOf(value));
     }
 
-    public static void putTrace(String traceId, String spanId) {
-        if (validTraceId(traceId)) {
-            MDC.put(TRACE_ID, traceId);
-            MDC.put(TRACE_ID_STANDARD, traceId);
-        }
-        if (spanId != null && spanId.matches("^[0-9a-f]{16}$")) {
-            MDC.put(SPAN_ID_STANDARD, spanId);
-        }
-    }
-
     public static String traceIdFromTraceparent(String traceparent) {
         String value = clean(traceparent);
         if (value == null) return null;
@@ -58,15 +47,6 @@ public final class TraceContext {
         if (parts.length < 4) return null;
         String traceId = parts[1];
         return validTraceId(traceId) ? traceId : null;
-    }
-
-    public static String spanIdFromTraceparent(String traceparent) {
-        String value = clean(traceparent);
-        if (value == null) return null;
-        String[] parts = value.split("-");
-        if (parts.length < 4) return null;
-        String spanId = parts[2];
-        return spanId != null && spanId.matches("^[0-9a-f]{16}$") ? spanId : null;
     }
 
     private static String clean(String value) {

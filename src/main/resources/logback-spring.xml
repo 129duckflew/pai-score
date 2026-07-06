@@ -19,7 +19,6 @@
                           "thread":"%thread",
                           "message":"%message",
                           "trace_id":"%X{trace_id}",
-                          "span_id":"%X{span_id}",
                           "traceId":"%X{traceId}",
                           "requestId":"%X{requestId}",
                           "userId":"%X{userId}",

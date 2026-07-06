@@ -4,14 +4,6 @@ import com.corundumstudio.socketio.*;
 import com.corundumstudio.socketio.annotation.*;
 import com.example.entity.*;
 import com.example.service.*;
-import io.opentelemetry.api.GlobalOpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.Scope;
-import io.opentelemetry.context.propagation.TextMapGetter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -26,20 +18,6 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(value = "socketio.enabled", havingValue = "true", matchIfMissing = true)
 public class SocketIOEventListener {
     private static final Logger log = LoggerFactory.getLogger(SocketIOEventListener.class);
-    private static final Tracer tracer = GlobalOpenTelemetry.getTracer("pai-score-socketio");
-    private static final TextMapGetter<Map<String, Object>> MAP_GETTER = new TextMapGetter<>() {
-        @Override
-        public Iterable<String> keys(Map<String, Object> carrier) {
-            return carrier != null ? carrier.keySet() : Set.of();
-        }
-
-        @Override
-        public String get(Map<String, Object> carrier, String key) {
-            if (carrier == null || key == null) return null;
-            Object value = carrier.get(key);
-            return value != null ? String.valueOf(value) : null;
-        }
-    };
 
     private final SocketIOServer server;
     private final UserService userService;
@@ -520,40 +498,23 @@ public class SocketIOEventListener {
     }
 
     private void withSocketTrace(SocketIOClient client, Map<String, Object> msg, String eventName, SocketAction action) {
-        Context parentContext = GlobalOpenTelemetry.getPropagators().getTextMapPropagator()
-            .extract(Context.current(), msg, MAP_GETTER);
-        Span span = tracer.spanBuilder("socket." + eventName)
-            .setParent(parentContext)
-            .setSpanKind(SpanKind.SERVER)
-            .startSpan();
-        try (Scope spanScope = span.makeCurrent();
-             TraceContext.Scope ignored = TraceContext.open(stringFrom(msg, "requestId"), stringFrom(msg, "traceparent"))) {
+        try (TraceContext.Scope ignored = TraceContext.open(stringFrom(msg, "requestId"), stringFrom(msg, "traceparent"))) {
             Long userId = client.get("userId");
             String roomCode = stringFrom(msg, "roomCode");
-            TraceContext.putTrace(span.getSpanContext().getTraceId(), span.getSpanContext().getSpanId());
             TraceContext.put(TraceContext.USER_ID, userId);
             TraceContext.put(TraceContext.ROOM_CODE, roomCode);
             TraceContext.put(TraceContext.EVENT, eventName);
-            span.setAttribute("app.event", eventName);
-            if (userId != null) span.setAttribute("app.user_id", userId);
-            if (roomCode != null && !roomCode.isBlank()) span.setAttribute("app.room_code", roomCode);
-            span.setAttribute("socket.client_id", client.getSessionId().toString());
             long started = System.currentTimeMillis();
             log.info("Socket event started event={} userId={} roomCode={}", eventName, userId, roomCode);
             try {
                 action.run();
-                span.setStatus(StatusCode.OK);
                 log.info("Socket event completed event={} userId={} roomCode={} durationMs={}",
                     eventName, userId, roomCode, System.currentTimeMillis() - started);
             } catch (Exception e) {
-                span.recordException(e);
-                span.setStatus(StatusCode.ERROR, e.getMessage() != null ? e.getMessage() : "Socket event failed");
                 log.error("Socket event failed event={} userId={} roomCode={} durationMs={}",
                     eventName, userId, roomCode, System.currentTimeMillis() - started, e);
                 sendError(client, e.getMessage());
             }
-        } finally {
-            span.end();
         }
     }
 
