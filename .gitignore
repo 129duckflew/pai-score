@@ -11,3 +11,9 @@ data/
 node_modules/
 dist/
 .DS_Store
+.agents/
+.codegraph/
+.opencode/
+.railway/verify-deploy.sh
+scripts/
+skills-lock.json
