@@ -105,8 +105,9 @@ export async function getAdminRuntime() {
   return parseResponse(res, '获取运行状态失败')
 }
 
-export async function getAdminLogs(limit = 200) {
+export async function getAdminLogs({ limit = 200, traceId = '' } = {}) {
   const params = new URLSearchParams({ limit })
+  if (traceId) params.set('traceId', traceId)
   const res = await fetch(`/api/admin/logs?${params}`, { headers: adminHeaders() })
   return parseResponse(res, '获取运行日志失败')
 }

@@ -156,6 +156,12 @@
           <div class="metric"><span>运行时间</span><strong>{{ uptime(runtime.uptimeSeconds) }}</strong></div>
           <div class="metric"><span>处理器</span><strong>{{ runtime.availableProcessors ?? '-' }}</strong></div>
         </div>
+        <div class="trace-search">
+          <input v-model="traceQuery" placeholder="输入 requestId / traceId" @keyup.enter="searchTrace" />
+          <button class="btn-secondary" @click="searchTrace"><Search :size="17" />查询链路</button>
+          <button class="btn-secondary" @click="clearTrace"><X :size="17" />清空</button>
+        </div>
+        <pre v-if="traceLogs.length" class="log-view trace-view">{{ traceLogs.join('\n') }}</pre>
         <pre class="log-view">{{ logs.join('\n') }}</pre>
       </section>
     </template>
@@ -210,6 +216,8 @@ const users = ref(emptyPage())
 const rooms = ref(emptyPage())
 const runtime = ref({})
 const logs = ref([])
+const traceQuery = ref('')
+const traceLogs = ref([])
 const roomHistory = ref(null)
 const editingUser = ref(false)
 const userForm = ref({ id: null, username: '', avatar: '', token: '', activeRoomCode: '' })
@@ -263,6 +271,7 @@ function logout() {
   rooms.value = emptyPage()
   runtime.value = {}
   logs.value = []
+  traceLogs.value = []
 }
 
 async function loadInitialData() {
@@ -334,10 +343,21 @@ async function loadRoomHistory(roomCode) {
 async function loadRuntime() {
   const [runtimeData, logData] = await Promise.all([
     guardRequest(getAdminRuntime),
-    guardRequest(() => getAdminLogs(240))
+    guardRequest(() => getAdminLogs({ limit: 240 }))
   ])
   if (runtimeData) runtime.value = runtimeData
   if (logData) logs.value = logData.lines || []
+}
+
+async function searchTrace() {
+  if (!traceQuery.value.trim()) return
+  const data = await guardRequest(() => getAdminLogs({ limit: 500, traceId: traceQuery.value.trim() }))
+  if (data) traceLogs.value = data.lines || []
+}
+
+function clearTrace() {
+  traceQuery.value = ''
+  traceLogs.value = []
 }
 
 function formatTime(value) {
@@ -390,7 +410,10 @@ function uptime(seconds) {
 .metric { border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 14px; background: rgba(255,255,255,.055); }
 .metric span { display: block; color: rgba(209,250,229,.58); font-size: 12px; margin-bottom: 8px; }
 .metric strong { color: #fff; font-size: 1.1rem; }
+.trace-search { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.trace-search input { min-width: min(100%, 360px); flex: 1; }
 .log-view { min-height: 360px; max-height: 560px; overflow: auto; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: rgba(0,0,0,.35); padding: 14px; color: #d7f7e8; font-size: 12px; line-height: 1.55; white-space: pre-wrap; }
+.log-view.trace-view { border-color: rgba(243,201,105,.32); background: rgba(28,21,5,.36); }
 @media (max-width: 760px) {
   .admin-header { align-items: flex-start; flex-direction: column; }
   .admin-editor { grid-template-columns: 1fr; }

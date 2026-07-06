@@ -4,6 +4,8 @@ import com.corundumstudio.socketio.*;
 import com.corundumstudio.socketio.annotation.*;
 import com.example.entity.*;
 import com.example.service.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 @Component
 @ConditionalOnProperty(value = "socketio.enabled", havingValue = "true", matchIfMissing = true)
 public class SocketIOEventListener {
+    private static final Logger log = LoggerFactory.getLogger(SocketIOEventListener.class);
 
     private final SocketIOServer server;
     private final UserService userService;
@@ -35,61 +38,75 @@ public class SocketIOEventListener {
 
     @OnConnect
     public void onConnect(SocketIOClient client) {
-        Long userId = client.get("userId");
-        String username = client.get("username");
-        String avatar = client.get("avatar");
+        try (TraceContext.Scope ignored = TraceContext.open(null)) {
+            Long userId = client.get("userId");
+            String username = client.get("username");
+            String avatar = client.get("avatar");
+            TraceContext.put(TraceContext.USER_ID, userId);
+            TraceContext.put(TraceContext.EVENT, "CONNECT");
+            log.info("Socket connected userId={} username={}", userId, username);
 
-        if (userId == null) {
-            client.sendEvent("ERROR", Map.of("message", "未认证", "type", "ERROR"));
-            client.disconnect();
-            return;
-        }
+            if (userId == null) {
+                client.sendEvent("ERROR", Map.of("message", "未认证", "type", "ERROR", "traceId", TraceContext.currentTraceId()));
+                client.disconnect();
+                return;
+            }
 
-        onlineUserRegistry.markOnline(userId);
+            onlineUserRegistry.markOnline(userId);
 
-        client.sendEvent("AUTH_OK", Map.of(
-            "type", "AUTH_OK",
-            "userId", userId,
-            "username", username != null ? username : "?",
-            "avatar", avatar
-        ));
+            client.sendEvent("AUTH_OK", Map.of(
+                "type", "AUTH_OK",
+                "traceId", TraceContext.currentTraceId(),
+                "userId", userId,
+                "username", username != null ? username : "?",
+                "avatar", avatar
+            ));
 
-        User user = userService.findById(userId);
-        if (user != null && user.getActiveRoomCode() != null) {
-            Room room = roomService.findByCode(user.getActiveRoomCode());
-            if (room != null && isActiveRoom(room)) {
-                client.joinRoom(room.getRoomCode());
-                markOnline(room.getRoomCode(), userId);
-                broadcastPlayerList(room);
+            User user = userService.findById(userId);
+            if (user != null && user.getActiveRoomCode() != null) {
+                Room room = roomService.findByCode(user.getActiveRoomCode());
+                if (room != null && isActiveRoom(room)) {
+                    TraceContext.put(TraceContext.ROOM_CODE, room.getRoomCode());
+                    client.joinRoom(room.getRoomCode());
+                    markOnline(room.getRoomCode(), userId);
+                    broadcastPlayerList(room);
+                }
             }
         }
     }
 
     @OnDisconnect
     public void onDisconnect(SocketIOClient client) {
-        Long userId = client.get("userId");
-        if (userId == null) return;
-        onlineUserRegistry.markOffline(userId);
+        try (TraceContext.Scope ignored = TraceContext.open(null)) {
+            Long userId = client.get("userId");
+            TraceContext.put(TraceContext.USER_ID, userId);
+            TraceContext.put(TraceContext.EVENT, "DISCONNECT");
+            log.info("Socket disconnected userId={}", userId);
+            if (userId == null) return;
+            onlineUserRegistry.markOffline(userId);
 
-        User user = userService.findById(userId);
-        if (user == null || user.getActiveRoomCode() == null) return;
+            User user = userService.findById(userId);
+            if (user == null || user.getActiveRoomCode() == null) return;
 
-        String roomCode = user.getActiveRoomCode();
-        markOffline(roomCode, userId);
-        Room room = roomService.findByCode(roomCode);
-        if (room != null && isActiveRoom(room)) {
-            broadcastPlayerList(room);
+            String roomCode = user.getActiveRoomCode();
+            TraceContext.put(TraceContext.ROOM_CODE, roomCode);
+            markOffline(roomCode, userId);
+            Room room = roomService.findByCode(roomCode);
+            if (room != null && isActiveRoom(room)) {
+                broadcastPlayerList(room);
+            }
         }
     }
 
     @OnEvent("CREATE_ROOM")
     public void onCreateRoom(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
-        try {
+        withSocketTrace(client, msg, "CREATE_ROOM", () -> {
             Long userId = client.get("userId");
             if (userId == null) { sendError(client, "未认证"); return; }
 
             Integer feeAmount = intFrom(msg != null ? msg.get("feeAmount") : null, 0);
             Room room = roomService.createRoom(userId, feeAmount);
+            TraceContext.put(TraceContext.ROOM_CODE, room.getRoomCode());
             client.joinRoom(room.getRoomCode());
             markOnline(room.getRoomCode(), userId);
 
@@ -99,19 +116,18 @@ public class SocketIOEventListener {
 
             client.sendEvent("ROOM_CREATED", Map.of(
                 "type", "ROOM_CREATED",
+                "traceId", TraceContext.currentTraceId(),
                 "roomCode", room.getRoomCode(),
                 "roomName", roomDisplayName(room),
                 "feeAmount", room.getFeeAmount() != null ? room.getFeeAmount() : 0,
                 "players", buildPlayerList(room.getId(), userId)
             ));
-        } catch (Exception e) {
-            sendError(client, e.getMessage());
-        }
+        });
     }
 
     @OnEvent("JOIN_ROOM")
     public void onJoinRoom(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
-        try {
+        withSocketTrace(client, msg, "JOIN_ROOM", () -> {
             Long userId = client.get("userId");
             if (userId == null) { sendError(client, "未认证"); return; }
 
@@ -135,6 +151,7 @@ public class SocketIOEventListener {
 
             client.sendEvent("ROOM_JOINED", Map.of(
                 "type", "ROOM_JOINED",
+                "traceId", TraceContext.currentTraceId(),
                 "roomCode", roomCode,
                 "roomName", roomDisplayName(room),
                 "players", buildPlayerList(room.getId(), userId)
@@ -149,14 +166,12 @@ public class SocketIOEventListener {
                 "username", joinedUser != null ? joinedUser.getUsername() : "?",
                 "avatar", joinedUser != null ? joinedUser.getAvatar() : null
             ));
-        } catch (Exception e) {
-            sendError(client, e.getMessage());
-        }
+        });
     }
 
     @OnEvent("LEAVE_ROOM")
     public void onLeaveRoom(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
-        try {
+        withSocketTrace(client, msg, "LEAVE_ROOM", () -> {
             Long userId = client.get("userId");
             if (userId == null) { sendError(client, "未认证"); return; }
 
@@ -181,14 +196,12 @@ public class SocketIOEventListener {
             } else {
                 broadcastPlayerList(room);
             }
-        } catch (Exception e) {
-            sendError(client, e.getMessage());
-        }
+        });
     }
 
     @OnEvent("START_GAME")
     public void onStartGame(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
-        try {
+        withSocketTrace(client, msg, "START_GAME", () -> {
             Long userId = client.get("userId");
             if (userId == null) { sendError(client, "未认证"); return; }
 
@@ -199,14 +212,12 @@ public class SocketIOEventListener {
                 "type", "GAME_STARTED",
                 "players", buildPlayerList(room.getId(), null)
             ));
-        } catch (Exception e) {
-            sendError(client, e.getMessage());
-        }
+        });
     }
 
     @OnEvent("SUBMIT_SCORE")
     public void onSubmitScore(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
-        try {
+        withSocketTrace(client, msg, "SUBMIT_SCORE", () -> {
             Long userId = client.get("userId");
             if (userId == null) { sendError(client, "未认证"); return; }
 
@@ -223,14 +234,12 @@ public class SocketIOEventListener {
                 "entry", entryToMap(entry),
                 "players", buildPlayerList(room.getId(), null)
             ));
-        } catch (Exception e) {
-            sendError(client, e.getMessage());
-        }
+        });
     }
 
     @OnEvent("SET_ROOM_FEE")
     public void onSetRoomFee(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
-        try {
+        withSocketTrace(client, msg, "SET_ROOM_FEE", () -> {
             Long userId = client.get("userId");
             if (userId == null) { sendError(client, "未认证"); return; }
 
@@ -246,14 +255,12 @@ public class SocketIOEventListener {
                 "entry", entryToMap(entry),
                 "players", buildPlayerList(room.getId(), null)
             ));
-        } catch (Exception e) {
-            sendError(client, e.getMessage());
-        }
+        });
     }
 
     @OnEvent("REVERT_SCORE")
     public void onRevertScore(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
-        try {
+        withSocketTrace(client, msg, "REVERT_SCORE", () -> {
             Long userId = client.get("userId");
             if (userId == null) { sendError(client, "未认证"); return; }
 
@@ -272,14 +279,12 @@ public class SocketIOEventListener {
                 "entries", entriesData,
                 "players", buildPlayerList(room.getId(), null)
             ));
-        } catch (Exception e) {
-            sendError(client, e.getMessage());
-        }
+        });
     }
 
     @OnEvent("END_GAME")
     public void onEndGame(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
-        try {
+        withSocketTrace(client, msg, "END_GAME", () -> {
             Long userId = client.get("userId");
             if (userId == null) { sendError(client, "未认证"); return; }
 
@@ -305,14 +310,12 @@ public class SocketIOEventListener {
                 "entries", entriesData,
                 "settlementTransfers", settlementTransfersToMap(room.getId())
             ));
-        } catch (Exception e) {
-            sendError(client, e.getMessage());
-        }
+        });
     }
 
     @OnEvent("GET_ROOM_STATE")
     public void onGetRoomState(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
-        try {
+        withSocketTrace(client, msg, "GET_ROOM_STATE", () -> {
             Long userId = client.get("userId");
             if (userId == null) { sendError(client, "未认证"); return; }
 
@@ -328,14 +331,12 @@ public class SocketIOEventListener {
             if (isActiveRoom(room)) {
                 broadcastPlayerList(room);
             }
-        } catch (Exception e) {
-            sendError(client, e.getMessage());
-        }
+        });
     }
 
     @OnEvent("ROLL_DICE")
     public void onRollDice(SocketIOClient client, AckRequest ack, Map<String, Object> msg) {
-        try {
+        withSocketTrace(client, msg, "ROLL_DICE", () -> {
             Long userId = client.get("userId");
             if (userId == null) { sendError(client, "未认证"); return; }
 
@@ -366,9 +367,7 @@ public class SocketIOEventListener {
                 "dice", List.of(d1, d2),
                 "players", buildPlayerList(room.getId(), null)
             ));
-        } catch (Exception e) {
-            sendError(client, e.getMessage());
-        }
+        });
     }
 
     // --- Helpers ---
@@ -491,7 +490,43 @@ public class SocketIOEventListener {
     }
 
     private void sendError(SocketIOClient client, String message) {
-        client.sendEvent("ERROR", Map.of("type", "ERROR", "message", message));
+        client.sendEvent("ERROR", Map.of(
+            "type", "ERROR",
+            "traceId", TraceContext.currentTraceId(),
+            "message", message != null ? message : "请求失败"
+        ));
+    }
+
+    private void withSocketTrace(SocketIOClient client, Map<String, Object> msg, String eventName, SocketAction action) {
+        try (TraceContext.Scope ignored = TraceContext.open(stringFrom(msg, "requestId"))) {
+            Long userId = client.get("userId");
+            String roomCode = stringFrom(msg, "roomCode");
+            TraceContext.put(TraceContext.USER_ID, userId);
+            TraceContext.put(TraceContext.ROOM_CODE, roomCode);
+            TraceContext.put(TraceContext.EVENT, eventName);
+            long started = System.currentTimeMillis();
+            log.info("Socket event started event={} userId={} roomCode={}", eventName, userId, roomCode);
+            try {
+                action.run();
+                log.info("Socket event completed event={} userId={} roomCode={} durationMs={}",
+                    eventName, userId, roomCode, System.currentTimeMillis() - started);
+            } catch (Exception e) {
+                log.error("Socket event failed event={} userId={} roomCode={} durationMs={}",
+                    eventName, userId, roomCode, System.currentTimeMillis() - started, e);
+                sendError(client, e.getMessage());
+            }
+        }
+    }
+
+    private String stringFrom(Map<String, Object> msg, String key) {
+        if (msg == null) return null;
+        Object value = msg.get(key);
+        return value != null ? String.valueOf(value) : null;
+    }
+
+    @FunctionalInterface
+    private interface SocketAction {
+        void run() throws Exception;
     }
 
     public void broadcastRoomsDestroyed(List<String> roomCodes) {

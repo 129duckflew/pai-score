@@ -177,9 +177,14 @@ public class AdminController {
 
     @GetMapping("/logs")
     public ResponseEntity<?> logs(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                  @RequestParam(defaultValue = "200") int limit) {
+                                  @RequestParam(defaultValue = "200") int limit,
+                                  @RequestParam(required = false) String traceId) {
         if (!authorized(authorization)) return unauthorized();
-        return ResponseEntity.ok(Map.of("lines", adminLogBuffer.recent(limit)));
+        List<AdminLogBuffer.LogEntry> entries = adminLogBuffer.byTraceId(traceId, limit);
+        return ResponseEntity.ok(Map.of(
+            "lines", entries.stream().map(AdminLogBuffer.LogEntry::line).toList(),
+            "entries", entries
+        ));
     }
 
     private boolean authorized(String authorization) {

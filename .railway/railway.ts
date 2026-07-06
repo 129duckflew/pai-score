@@ -21,15 +21,15 @@ const backend = service("backend", {
     builder: "DOCKERFILE",
     dockerfilePath: "Dockerfile",
   },
-    env: {
-    PORT: "8081",
-    SOCKETIO_PORT: "8089",
-    SPRING_PROFILES_ACTIVE: "railway",
-    PGHOST: db.env.PGHOST,
-    PGPORT: db.env.PGPORT,
-    PGUSER: db.env.PGUSER,
-    PGPASSWORD: db.env.PGPASSWORD,
-    PGDATABASE: db.env.PGDATABASE,
+  env: {
+    PORT: preserve(),
+    SOCKETIO_PORT: preserve(),
+    SPRING_PROFILES_ACTIVE: preserve(),
+    PGHOST: preserve(),
+    PGPORT: preserve(),
+    PGUSER: preserve(),
+    PGPASSWORD: preserve(),
+    PGDATABASE: preserve(),
     ADMIN_PASSWORD: preserve(),
   },
 });
@@ -43,13 +43,10 @@ const frontend = service("frontend", {
     builder: "DOCKERFILE",
     dockerfilePath: "Dockerfile",
   },
-  deploy: {
-    sleepApplication: true,
-  },
-    env: {
-    BACKEND_HOST: backend.env.RAILWAY_PRIVATE_DOMAIN,
-    BACKEND_PORT: "8081",
-    SOCKETIO_PORT: "8089",
+  env: {
+    BACKEND_HOST: preserve(),
+    BACKEND_PORT: preserve(),
+    SOCKETIO_PORT: preserve(),
   },
 });
 
