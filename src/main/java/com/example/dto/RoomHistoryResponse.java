@@ -7,7 +7,10 @@ public class RoomHistoryResponse {
     private String name;
     private String status;
     private int feeAmount;
+    private Long feePayerId;
+    private String feePayerName;
     private List<PlayerInfo> players;
+    private List<RoomFeeShareInfo> roomFeeShares;
     private List<EntryInfo> entries;
     private List<SettlementTransferInfo> settlementTransfers;
 
@@ -19,8 +22,14 @@ public class RoomHistoryResponse {
     public void setStatus(String status) { this.status = status; }
     public int getFeeAmount() { return feeAmount; }
     public void setFeeAmount(int feeAmount) { this.feeAmount = feeAmount; }
+    public Long getFeePayerId() { return feePayerId; }
+    public void setFeePayerId(Long feePayerId) { this.feePayerId = feePayerId; }
+    public String getFeePayerName() { return feePayerName; }
+    public void setFeePayerName(String feePayerName) { this.feePayerName = feePayerName; }
     public List<PlayerInfo> getPlayers() { return players; }
     public void setPlayers(List<PlayerInfo> players) { this.players = players; }
+    public List<RoomFeeShareInfo> getRoomFeeShares() { return roomFeeShares; }
+    public void setRoomFeeShares(List<RoomFeeShareInfo> roomFeeShares) { this.roomFeeShares = roomFeeShares; }
     public List<EntryInfo> getEntries() { return entries; }
     public void setEntries(List<EntryInfo> entries) { this.entries = entries; }
     public List<SettlementTransferInfo> getSettlementTransfers() { return settlementTransfers; }
@@ -43,6 +52,22 @@ public class RoomHistoryResponse {
         public void setAvatar(String avatar) { this.avatar = avatar; }
         public int getTotalScore() { return totalScore; }
         public void setTotalScore(int totalScore) { this.totalScore = totalScore; }
+    }
+
+    public static class RoomFeeShareInfo {
+        private Long playerId;
+        private Long userId;
+        private String playerName;
+        private int amount;
+
+        public Long getPlayerId() { return playerId; }
+        public void setPlayerId(Long playerId) { this.playerId = playerId; }
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
+        public String getPlayerName() { return playerName; }
+        public void setPlayerName(String playerName) { this.playerName = playerName; }
+        public int getAmount() { return amount; }
+        public void setAmount(int amount) { this.amount = amount; }
     }
 
     public static class EntryInfo {

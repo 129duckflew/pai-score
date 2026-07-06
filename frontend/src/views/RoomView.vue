@@ -81,9 +81,11 @@
       <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div class="flex-1">
           <p class="text-sm font-semibold text-gold">房费 AA</p>
-          <p class="mt-1 text-sm text-emerald-100/60">当前房费 {{ feeAmount }}，结束后按人数平摊并计入转账方案</p>
+          <p class="mt-1 text-sm text-emerald-100/60">
+            当前房费 {{ feeAmount }}，{{ feePayerName ? `${feePayerName} 已支付全额` : '尚未指定付款人' }}，结束后按人数平摊并计入转账方案
+          </p>
         </div>
-        <div v-if="isHost && !isFinished" class="flex gap-2">
+        <div v-if="canUpdateRoomFee" class="flex gap-2">
           <input v-model.number="feeInput" type="number" min="0" inputmode="numeric" class="min-h-10 w-32" />
           <button class="btn-primary" @click="setRoomFee">更新房费</button>
         </div>
@@ -164,6 +166,19 @@
 
     <div v-if="isFinished" class="panel-strong">
       <h3 class="mb-4 text-xl font-black text-white">最小转账方案</h3>
+      <div v-if="feeAmount > 0" class="fee-included-box">
+        <div class="fee-included-title">
+          <span>{{ roomFeeIncluded ? '房费已纳入最终转账方案' : '房费尚未完整纳入转账方案' }}</span>
+          <strong>{{ feeAmount }}</strong>
+        </div>
+        <p class="text-sm text-emerald-100/60">{{ feePayerName || '付款人' }} 已支付全额房费，每位玩家已包含自己的平摊金额。</p>
+        <div class="fee-share-grid">
+          <div v-for="share in displayRoomFeeShares" :key="share.playerId" class="fee-share-chip">
+            <span>{{ share.playerName }}</span>
+            <strong>已包含房费 {{ share.amount }}</strong>
+          </div>
+        </div>
+      </div>
       <div v-if="settlementTransfers.length" class="space-y-3">
         <div v-for="(t, i) in settlementTransfers" :key="i" class="transfer-row">
           <span>{{ t.fromPlayerName }}</span>
@@ -248,6 +263,7 @@ const roomState = ref(null)
 const players = ref([])
 const entries = ref([])
 const settlementTransfers = ref([])
+const roomFeeShares = ref([])
 const error = ref('')
 const leavingRef = ref(false)
 const socketConnected = ref(wsService.connected)
@@ -257,8 +273,23 @@ const isHost = computed(() => roomState.value?.hostId === myUserId.value)
 const isWaiting = computed(() => roomState.value?.status === 'WAITING')
 const isActive = computed(() => roomState.value?.status === 'PLAYING')
 const isFinished = computed(() => roomState.value?.status === 'FINISHED')
+const isDisbanded = computed(() => roomState.value?.status === 'DISBANDED')
 const roomDisplayName = computed(() => roomState.value?.roomName || roomState.value?.name || `房间 ${roomCode}`)
 const feeAmount = computed(() => roomState.value?.feeAmount || 0)
+const feePayerName = computed(() => roomState.value?.feePayerName || players.value.find(p => p.userId === roomState.value?.feePayerId)?.username || '')
+const canUpdateRoomFee = computed(() => roomState.value && !isFinished.value && !isDisbanded.value)
+const roomFeeIncluded = computed(() => feeAmount.value > 0 && Boolean(roomState.value?.feePayerId) && roomFeeShares.value.length === players.value.length)
+const displayRoomFeeShares = computed(() => {
+  const byPlayerId = new Map(roomFeeShares.value.map(share => [share.playerId, share]))
+  return players.value.map(player => {
+    const share = byPlayerId.get(player.playerId)
+    return {
+      playerId: player.playerId,
+      playerName: share?.playerName || player.username,
+      amount: share?.amount || 0,
+    }
+  })
+})
 const feeInput = ref(0)
 
 // Modal state
@@ -335,6 +366,7 @@ function handleRoomState(msg) {
   players.value = msg.players || []
   entries.value = msg.entries || []
   settlementTransfers.value = msg.settlementTransfers || []
+  roomFeeShares.value = msg.roomFeeShares || []
   feeInput.value = msg.feeAmount || 0
 }
 
@@ -361,16 +393,18 @@ function handleScoreReverted(msg) {
 }
 
 function handleRoomFeeUpdated(msg) {
-  roomState.value = { ...roomState.value, feeAmount: msg.feeAmount || 0 }
+  roomState.value = { ...roomState.value, feeAmount: msg.feeAmount || 0, feePayerId: msg.feePayerId, feePayerName: msg.feePayerName }
   feeInput.value = msg.feeAmount || 0
+  roomFeeShares.value = msg.roomFeeShares || []
   entries.value.push(msg.entry)
   players.value = msg.players || []
 }
 
 function handleGameOver(msg) {
-  roomState.value = { ...roomState.value, status: 'FINISHED' }
+  roomState.value = { ...roomState.value, status: 'FINISHED', feeAmount: msg.feeAmount || feeAmount.value, feePayerId: msg.feePayerId, feePayerName: msg.feePayerName }
   players.value = msg.players || []
   entries.value = msg.entries || []
+  roomFeeShares.value = msg.roomFeeShares || []
   settlementTransfers.value = msg.settlementTransfers || []
 }
 
@@ -764,6 +798,61 @@ input[type="number"].full-width {
   padding: 12px 14px;
 }
 
+.fee-included-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(243, 201, 105, 0.22);
+  border-radius: 14px;
+  background: rgba(243, 201, 105, 0.08);
+  padding: 14px;
+}
+
+.fee-included-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.fee-included-title strong {
+  color: #f3c969;
+}
+
+.fee-share-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.fee-share-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  background: rgba(255,255,255,.06);
+  padding: 9px 10px;
+  font-size: 13px;
+}
+
+.fee-share-chip span,
+.fee-share-chip strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fee-share-chip strong {
+  color: #f3c969;
+}
+
 @media (max-width: 600px) {
   .header { flex-wrap: wrap; gap: 8px; }
   .header h2 { font-size: 15px; }
@@ -782,6 +871,8 @@ input[type="number"].full-width {
   .modal-footer button { width: 100%; }
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -14px; padding: 0 14px; }
   table { min-width: 500px; }
+  .fee-included-title { align-items: flex-start; flex-direction: column; }
+  .fee-share-chip { flex-direction: column; align-items: flex-start; }
 }
 
 .toast-container {

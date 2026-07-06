@@ -25,6 +25,9 @@ public class Room {
     @Column
     private Integer feeAmount = 0;
 
+    @Column
+    private Long feePayerId;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -45,6 +48,8 @@ public class Room {
     public void setName(String name) { this.name = name; }
     public Integer getFeeAmount() { return feeAmount; }
     public void setFeeAmount(Integer feeAmount) { this.feeAmount = feeAmount; }
+    public Long getFeePayerId() { return feePayerId; }
+    public void setFeePayerId(Long feePayerId) { this.feePayerId = feePayerId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

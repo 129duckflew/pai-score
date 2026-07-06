@@ -114,14 +114,14 @@ public class SocketIOEventListener {
             user.setActiveRoomCode(room.getRoomCode());
             userService.updateUser(user);
 
-            client.sendEvent("ROOM_CREATED", Map.of(
-                "type", "ROOM_CREATED",
-                "traceId", TraceContext.currentTraceId(),
-                "roomCode", room.getRoomCode(),
-                "roomName", roomDisplayName(room),
-                "feeAmount", room.getFeeAmount() != null ? room.getFeeAmount() : 0,
-                "players", buildPlayerList(room.getId(), userId)
-            ));
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "ROOM_CREATED");
+            data.put("traceId", TraceContext.currentTraceId());
+            data.put("roomCode", room.getRoomCode());
+            data.put("roomName", roomDisplayName(room));
+            addRoomFeeData(data, room);
+            data.put("players", buildPlayerList(room.getId(), userId));
+            client.sendEvent("ROOM_CREATED", data);
         });
     }
 
@@ -249,12 +249,12 @@ public class SocketIOEventListener {
             ScoreEntry entry = gameService.setRoomFee(userId, roomCode, feeAmount);
             Room room = roomService.findByCode(roomCode);
 
-            server.getRoomOperations(roomCode).sendEvent("ROOM_FEE_UPDATED", Map.of(
-                "type", "ROOM_FEE_UPDATED",
-                "feeAmount", room.getFeeAmount() != null ? room.getFeeAmount() : 0,
-                "entry", entryToMap(entry),
-                "players", buildPlayerList(room.getId(), null)
-            ));
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "ROOM_FEE_UPDATED");
+            addRoomFeeData(data, room);
+            data.put("entry", entryToMap(entry));
+            data.put("players", buildPlayerList(room.getId(), null));
+            server.getRoomOperations(roomCode).sendEvent("ROOM_FEE_UPDATED", data);
         });
     }
 
@@ -304,12 +304,13 @@ public class SocketIOEventListener {
                 .map(this::entryToMap)
                 .collect(Collectors.toList());
 
-            server.getRoomOperations(roomCode).sendEvent("GAME_OVER", Map.of(
-                "type", "GAME_OVER",
-                "players", buildPlayerList(room.getId(), null),
-                "entries", entriesData,
-                "settlementTransfers", settlementTransfersToMap(room.getId())
-            ));
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "GAME_OVER");
+            data.put("players", buildPlayerList(room.getId(), null));
+            data.put("entries", entriesData);
+            addRoomFeeData(data, room);
+            data.put("settlementTransfers", settlementTransfersToMap(room.getId()));
+            server.getRoomOperations(roomCode).sendEvent("GAME_OVER", data);
         });
     }
 
@@ -377,17 +378,17 @@ public class SocketIOEventListener {
             .map(this::entryToMap)
             .collect(Collectors.toList());
 
-        client.sendEvent("ROOM_STATE", Map.of(
-            "type", "ROOM_STATE",
-            "roomCode", room.getRoomCode(),
-            "roomName", roomDisplayName(room),
-            "status", room.getStatus(),
-            "hostId", room.getHostId(),
-            "feeAmount", room.getFeeAmount() != null ? room.getFeeAmount() : 0,
-            "players", buildPlayerList(room.getId(), null),
-            "entries", entriesData,
-            "settlementTransfers", settlementTransfersToMap(room.getId())
-        ));
+        Map<String, Object> data = new HashMap<>();
+        data.put("type", "ROOM_STATE");
+        data.put("roomCode", room.getRoomCode());
+        data.put("roomName", roomDisplayName(room));
+        data.put("status", room.getStatus());
+        data.put("hostId", room.getHostId());
+        addRoomFeeData(data, room);
+        data.put("players", buildPlayerList(room.getId(), null));
+        data.put("entries", entriesData);
+        data.put("settlementTransfers", settlementTransfersToMap(room.getId()));
+        client.sendEvent("ROOM_STATE", data);
     }
 
     private List<Map<String, Object>> buildPlayerList(Long roomId, Long excludeUserId) {
@@ -471,6 +472,40 @@ public class SocketIOEventListener {
                 return m;
             })
             .collect(Collectors.toList());
+    }
+
+    private List<Map<String, Object>> roomFeeSharesToMap(Room room) {
+        Map<Long, Integer> shares = gameService.calculateRoomFeeShares(room);
+        return roomService.getPlayersOrdered(room.getId()).stream()
+            .map(player -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("playerId", player.getId());
+                m.put("userId", player.getUserId());
+                m.put("playerName", playerName(room.getId(), player.getId()));
+                m.put("amount", shares.getOrDefault(player.getId(), 0));
+                return m;
+            })
+            .collect(Collectors.toList());
+    }
+
+    private void addRoomFeeData(Map<String, Object> data, Room room) {
+        data.put("feeAmount", room.getFeeAmount() != null ? room.getFeeAmount() : 0);
+        data.put("feePayerId", effectiveFeePayerId(room));
+        data.put("feePayerName", feePayerName(room));
+        data.put("roomFeeShares", roomFeeSharesToMap(room));
+    }
+
+    private String feePayerName(Room room) {
+        Long feePayerId = effectiveFeePayerId(room);
+        if (feePayerId == null) return null;
+        User payer = userService.findById(feePayerId);
+        return payer != null ? payer.getUsername() : null;
+    }
+
+    private Long effectiveFeePayerId(Room room) {
+        int feeAmount = room.getFeeAmount() != null ? room.getFeeAmount() : 0;
+        if (feeAmount <= 0) return null;
+        return room.getFeePayerId() != null ? room.getFeePayerId() : room.getHostId();
     }
 
     private String playerName(Long roomId, Long playerId) {

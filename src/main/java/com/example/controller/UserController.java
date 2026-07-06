@@ -65,6 +65,12 @@ public class UserController {
         res.setName(room.getName());
         res.setStatus(room.getStatus());
         res.setFeeAmount(room.getFeeAmount() != null ? room.getFeeAmount() : 0);
+        Long feePayerId = room.getFeeAmount() != null && room.getFeeAmount() > 0
+            ? (room.getFeePayerId() != null ? room.getFeePayerId() : room.getHostId())
+            : null;
+        res.setFeePayerId(feePayerId);
+        User feePayer = feePayerId != null ? userService.findById(feePayerId) : null;
+        res.setFeePayerName(feePayer != null ? feePayer.getUsername() : null);
 
         List<RoomPlayer> players = roomService.getPlayers(room.getId());
         List<RoomHistoryResponse.PlayerInfo> playerInfos = players.stream().map(p -> {
@@ -78,6 +84,17 @@ public class UserController {
             return pi;
         }).collect(Collectors.toList());
         res.setPlayers(playerInfos);
+
+        Map<Long, Integer> roomFeeShares = gameService.calculateRoomFeeShares(room);
+        res.setRoomFeeShares(players.stream().map(p -> {
+            RoomHistoryResponse.RoomFeeShareInfo si = new RoomHistoryResponse.RoomFeeShareInfo();
+            si.setPlayerId(p.getId());
+            si.setUserId(p.getUserId());
+            si.setPlayerName(playerInfos.stream().filter(pi -> pi.getPlayerId().equals(p.getId()))
+                .findFirst().map(RoomHistoryResponse.PlayerInfo::getUsername).orElse("?"));
+            si.setAmount(roomFeeShares.getOrDefault(p.getId(), 0));
+            return si;
+        }).collect(Collectors.toList()));
 
         List<ScoreEntry> allEntries = gameService.getEntries(room.getId());
         List<RoomHistoryResponse.EntryInfo> entryInfos = allEntries.stream().map(e -> {

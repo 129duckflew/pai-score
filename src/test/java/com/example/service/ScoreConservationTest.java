@@ -183,6 +183,27 @@ class ScoreConservationTest {
     }
 
     @Test
+    void nonHostCanPayRoomFeeAndReceiveAaSettlement() {
+        User a = userService.register("A");
+        User b = userService.register("B");
+        User c = userService.register("C");
+        Room room = roomService.createRoom(a.getId());
+        roomService.joinRoom(b.getId(), room.getRoomCode());
+        roomService.joinRoom(c.getId(), room.getRoomCode());
+        gameService.setRoomFee(b.getId(), room.getRoomCode(), 30);
+        gameService.startGame(a.getId(), room.getRoomCode());
+
+        RoomPlayer bP = playerRepository.findByRoomIdAndUserId(room.getId(), b.getId()).get();
+
+        gameService.endGame(a.getId(), room.getRoomCode());
+
+        List<SettlementTransfer> transfers = gameService.getSettlementTransfers(room.getId());
+        assertThat(transfers).hasSize(2);
+        assertThat(transfers).extracting(SettlementTransfer::getAmount).containsExactly(10, 10);
+        assertThat(transfers).allMatch(t -> t.getToPlayerId().equals(bP.getId()));
+    }
+
+    @Test
     void setRoomFeeWritesLogWithoutChangingScores() {
         User a = userService.register("A");
         User b = userService.register("B");
@@ -193,6 +214,7 @@ class ScoreConservationTest {
 
         assertThat(feeLog.getType()).isEqualTo("ROOM_FEE");
         assertThat(feeLog.getScore()).isEqualTo(24);
+        assertThat(roomService.findByCode(room.getRoomCode()).getFeePayerId()).isEqualTo(a.getId());
         assertThat(playerRepository.findByRoomId(room.getId()))
             .extracting(RoomPlayer::getTotalScore)
             .containsOnly(0);

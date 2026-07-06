@@ -42,7 +42,11 @@ public class RoomService {
         room.setRoomCode(generateRoomCode());
         room.setHostId(hostUserId);
         room.setName(hostUser.getUsername() + "的房间");
-        room.setFeeAmount(safeFeeAmount(feeAmount));
+        int safeFeeAmount = safeFeeAmount(feeAmount);
+        room.setFeeAmount(safeFeeAmount);
+        if (safeFeeAmount > 0) {
+            room.setFeePayerId(hostUserId);
+        }
         room.setStatus("WAITING");
         room.setCreatedAt(LocalDateTime.now());
         room = roomRepository.save(room);

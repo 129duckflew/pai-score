@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -123,9 +124,6 @@ public class GameService {
         Room room = roomRepository.findByRoomCode(roomCode)
                 .orElseThrow(() -> new RuntimeException("房间不存在"));
 
-        if (!room.getHostId().equals(userId)) {
-            throw new RuntimeException("仅房主可以设置房费");
-        }
         if ("FINISHED".equals(room.getStatus()) || "DISBANDED".equals(room.getStatus())) {
             throw new RuntimeException("房间已结束，无法设置房费");
         }
@@ -133,19 +131,21 @@ public class GameService {
             throw new RuntimeException("房费不能为负数");
         }
 
+        RoomPlayer payer = playerRepository.findByRoomIdAndUserId(room.getId(), userId)
+                .orElseThrow(() -> new RuntimeException("玩家不在此房间"));
+
         room.setFeeAmount(feeAmount);
+        room.setFeePayerId(feeAmount > 0 ? userId : null);
         roomRepository.save(room);
 
-        RoomPlayer host = playerRepository.findByRoomIdAndUserId(room.getId(), userId)
-                .orElseThrow(() -> new RuntimeException("玩家不在此房间"));
         ScoreEntry entry = new ScoreEntry();
         entry.setRoomId(room.getId());
-        entry.setSourcePlayerId(host.getId());
-        entry.setTargetPlayerId(host.getId());
+        entry.setSourcePlayerId(payer.getId());
+        entry.setTargetPlayerId(payer.getId());
         entry.setAddedByUserId(userId);
         entry.setScore(feeAmount);
         entry.setType("ROOM_FEE");
-        entry.setNote("房费 AA 平摊");
+        entry.setNote("房费 AA 平摊，付款人已支付全额");
         entry.setCreatedAt(LocalDateTime.now());
         return entryRepository.save(entry);
     }
@@ -241,6 +241,10 @@ public class GameService {
         return settlementRepository.findByRoomIdOrderByIdAsc(roomId);
     }
 
+    public Map<Long, Integer> calculateRoomFeeShares(Room room) {
+        return calculateRoomFeeShares(room, playerRepository.findByRoomIdOrderByJoinedAtAsc(room.getId()));
+    }
+
     private void calculateSettlementTransfers(Room room) {
         settlementRepository.deleteByRoomId(room.getId());
 
@@ -287,21 +291,38 @@ public class GameService {
         int feeAmount = room.getFeeAmount() != null ? room.getFeeAmount() : 0;
         if (feeAmount <= 0) return;
 
+        Map<Long, Integer> shares = calculateRoomFeeShares(room, players);
+        shares.forEach((playerId, share) ->
+                balances.compute(playerId, (ignored, balance) -> (balance == null ? 0 : balance) - share));
+
+        Long feePayerId = room.getFeePayerId() != null ? room.getFeePayerId() : room.getHostId();
+        RoomPlayer payer = players.stream()
+                .filter(player -> player.getUserId().equals(feePayerId))
+                .findFirst()
+                .orElse(null);
+        if (payer == null && !room.getHostId().equals(feePayerId)) {
+            payer = players.stream()
+                    .filter(player -> player.getUserId().equals(room.getHostId()))
+                    .findFirst()
+                    .orElse(null);
+        }
+        if (payer != null) {
+            balances.compute(payer.getId(), (ignored, balance) -> (balance == null ? 0 : balance) + feeAmount);
+        }
+    }
+
+    private Map<Long, Integer> calculateRoomFeeShares(Room room, List<RoomPlayer> players) {
+        Map<Long, Integer> shares = new LinkedHashMap<>();
+        int feeAmount = room.getFeeAmount() != null ? room.getFeeAmount() : 0;
+        if (feeAmount <= 0 || players.isEmpty()) return shares;
+
         int baseShare = feeAmount / players.size();
         int remainder = feeAmount % players.size();
         for (int i = 0; i < players.size(); i++) {
             RoomPlayer player = players.get(i);
-            int share = baseShare + (i < remainder ? 1 : 0);
-            balances.compute(player.getId(), (ignored, balance) -> (balance == null ? 0 : balance) - share);
+            shares.put(player.getId(), baseShare + (i < remainder ? 1 : 0));
         }
-
-        RoomPlayer host = players.stream()
-                .filter(player -> player.getUserId().equals(room.getHostId()))
-                .findFirst()
-                .orElse(null);
-        if (host != null) {
-            balances.compute(host.getId(), (ignored, balance) -> (balance == null ? 0 : balance) + feeAmount);
-        }
+        return shares;
     }
 
     private static class Balance {
