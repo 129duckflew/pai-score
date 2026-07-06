@@ -1,7 +1,9 @@
+import { traceHeaders } from './trace'
+
 export async function register(username) {
   const res = await fetch('/api/users/register', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...traceHeaders() },
     body: JSON.stringify({ username })
   })
   if (!res.ok) throw new Error('注册失败')
@@ -9,19 +11,19 @@ export async function register(username) {
 }
 
 export async function getUserHistory(userId) {
-  const res = await fetch(`/api/users/${userId}/history`)
+  const res = await fetch(`/api/users/${userId}/history`, { headers: traceHeaders() })
   if (!res.ok) throw new Error('获取历史记录失败')
   return res.json()
 }
 
 export async function getActiveRooms() {
-  const res = await fetch('/api/rooms/active')
+  const res = await fetch('/api/rooms/active', { headers: traceHeaders() })
   if (!res.ok) throw new Error('获取房间列表失败')
   return res.json()
 }
 
 export async function getRoomHistory(roomCode) {
-  const res = await fetch(`/api/rooms/${roomCode}/history`)
+  const res = await fetch(`/api/rooms/${roomCode}/history`, { headers: traceHeaders() })
   if (!res.ok) throw new Error('获取房间记录失败')
   return res.json()
 }

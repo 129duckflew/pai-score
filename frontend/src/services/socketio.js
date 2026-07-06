@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client'
+import { withTracePayload } from './trace'
 
 const SOCKETIO_URL = import.meta.env.VITE_SOCKETIO_URL || ''
 
@@ -71,10 +72,11 @@ class SocketIOService {
   }
 
   send(type, data = {}) {
+    const payload = withTracePayload(data)
     if (this.socket && this.socket.connected) {
-      this.socket.emit(type, data)
+      this.socket.emit(type, payload)
     } else if (this.socket) {
-      this.pendingQueue.push({ type, data })
+      this.pendingQueue.push({ type, data: payload })
     }
   }
 

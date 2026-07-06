@@ -1,3 +1,5 @@
+import { traceHeaders } from './trace'
+
 const ADMIN_TOKEN_KEY = 'adminToken'
 
 function adminToken() {
@@ -7,7 +9,8 @@ function adminToken() {
 function adminHeaders() {
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${adminToken()}`
+    Authorization: `Bearer ${adminToken()}`,
+    ...traceHeaders()
   }
 }
 
@@ -41,7 +44,7 @@ export function clearAdminToken() {
 export async function adminLogin(password) {
   const res = await fetch('/api/admin/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...traceHeaders() },
     body: JSON.stringify({ password })
   })
   const data = await parseResponse(res, '管理员登录失败')
